@@ -1,0 +1,3559 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calorie Tracker</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calorie Tracker">
+<meta name="theme-color" content="#0d0d12">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <style>
+/* --- Electric palette ---
+   One dark base for the whole app, but --accent switches between the two sections: cyan for
+   Eating, violet for Fitness. Every button, active tab and quick-tap link reads from --accent,
+   so the two sections feel like distinct places without a second stylesheet — flipping one
+   variable on <body> (done in JS when the mode switcher is tapped) recolors everything at once. */
+:root, body {
+  --bg: #0d0d12;
+  --card: #17171d;
+  --track: #1e1e26;
+  --border: #2a2a33;
+  --secondary-bg: #23232b;
+  --text: #ededf2;
+  --text-dim: #9a9aa5;
+  --danger: #ff5c7a;
+  --good: #30d158;
+  --warn: #ff9f0a;
+  --accent: #4fd1e8;
+  --on-accent: #06222a;
+}
+body.mode-fitness { --accent: #8b7cf6; --on-accent: #1a1330; }
+#undoBar { display: flex; justify-content: space-between; align-items: center; }
+#undoBar button { margin-left: 8px; }
+/* Active-workout / rest-timer bar — pinned to the very top of the viewport (not just the top
+   of the scroll area) so it stays visible no matter which section/tab you're on. Hidden by
+   default; JS toggles the .show class and adds body.hasActiveBar to make room for it so it
+   doesn't sit on top of the hero banner underneath. */
+#activeWorkoutBar {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: var(--accent); color: var(--on-accent);
+  padding: 10px 16px; align-items: center; justify-content: space-between;
+  gap: 10px; font-size: 14px; font-weight: 700;
+}
+#activeWorkoutBar.show { display: flex; }
+#awbInfo { flex: 1; cursor: pointer; }
+#awbControls { display: flex; gap: 8px; align-items: center; flex: none; font-weight: 700; }
+#awbControls button { padding: 5px 10px; font-size: 13px; background: var(--on-accent); color: var(--accent); }
+body.hasActiveBar { padding-top: 54px; }
+button:disabled { opacity: 0.5; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    h1 { font-size: 22px; margin: 0 0 14px; }
+    #status { transition: opacity 0.4s; }
+    #status.fade { opacity: 0.35; }
+    #debug { display: none; font-size: 11px; color: var(--text-dim); word-break: break-all; }
+    #debug.show { display: block; }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .barlabel {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+    .bar {
+      height: 8px;
+      background: var(--track);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .fill { height: 100%; background: var(--good); }
+    /* Today screen's macro summary, as a 2x2 grid of stat cells instead of
+       four stacked plain bars - each macro is its own visually distinct
+       panel (icon + number + slim progress bar) rather than one
+       undifferentiated block. Reuses --secondary-bg so cells read as
+       insets within the outer .card, not a second competing card. */
+    .macroGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+    .macroCell { background: var(--secondary-bg); border-radius: 10px; padding: 10px; }
+    .macroCell .mcHead { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+    .macroCell .mcHead svg { width: 22px; height: 22px; flex: none; }
+    .macroCell .mcVal { font-size: 16px; font-weight: 700; color: var(--text); }
+    .macroCell .mcSub { font-size: 11px; color: var(--text-dim); margin: 1px 0 6px; }
+    .macroCell .mcBar { height: 5px; border-radius: 2.5px; background: var(--track); overflow: hidden; }
+    .macroCell .mcBar .mcFill { height: 100%; }
+    button, .photobtn {
+      font-size: 16px;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: var(--on-accent);
+      display: inline-block;
+    }
+button, .photobtn { transition: transform 0.1s, opacity 0.1s; }
+button:active, .photobtn:active { transform: scale(0.96); opacity: 0.8; }
+button:disabled { opacity: 0.5; }
+.btnStack button, .btnStack .photobtn { display: block; width: 100%; margin-bottom: 8px; text-align: center; }
+    .entryMethod { display: none; margin-top: 8px; }
+    .fab { display: block; width: 100%; margin-top: 4px; font-size: 18px; }
+    .sheet { margin-top: 8px; }
+    .sheet button { display: block; width: 100%; margin-bottom: 8px; }
+    #photo, #rPhoto, #fPhoto, #rFinalPhoto { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .mealhead { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold; color: var(--text-dim); margin: 14px 0 2px; text-transform: uppercase; }
+    .mealhead svg { width: 16px; height: 16px; flex: none; }
+    .row { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--border); font-size: 15px; }
+    #logBtns button { margin-right: 6px; margin-top: 8px; }
+#qtyRow { display: flex; gap: 6px; align-items: center; }
+    #qtyRow button { flex: 0 0 46px; background: var(--secondary-bg); color: var(--text); margin: 0; padding: 10px 0; font-size: 20px; }
+    #qtyRow input { flex: 1; text-align: center; margin: 0; }
+    #editor input, #bc, #grams, #desc, #descRestaurant, #foodSearch, #qtyRow input, #wDate, #wLbs, #rName, #rServings, #rIng, #cAge, #cFt, #cIn, #cLbs, #cSex, #cAct, #cTarget, #cDir, #cRate, #rtName, #wRoutinePick, #dineHall, #dineStation, #dineMeal, #dineItem {
+      font-size: 16px;
+      padding: 9px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 100%;
+      margin-bottom: 8px;
+      background: var(--card);
+      color: var(--text);
+    }
+    .nums { display: flex; gap: 6px; }
+    .grey { background: var(--secondary-bg); color: var(--text); }
+    .del, .delmeal, .delw { background: none; color: var(--danger); font-size: 18px; padding: 0 0 0 12px; }
+    .quick { color: var(--accent); }
+    .sub { font-size: 12px; color: var(--text-dim); padding-bottom: 6px; }
+    #wChart { width: 100%; height: 180px; display: block; margin-top: 8px; }
+    #wDate { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; padding: 9px 6px; }
+    #wDate::-webkit-date-and-time-value { text-align: left; margin: 0; }
+    /* Home-screen banner: a static concentric-ring mark (canvas-design technique) layered over
+       a slow-drifting particle field (algorithmic-art technique) that spirals toward the exact
+       same center point as the rings, so the still art and the living art read as one composition
+       instead of two unrelated effects stacked on top of each other. Both layers read --accent
+       live, same pattern the "+" badge and weight chart already use, so it auto-recolors cyan/
+       violet with the rest of the app - no extra wiring needed when the mode switcher is tapped. */
+    #hero {
+      position: relative;
+      overflow: hidden;
+      height: 104px;
+      margin-bottom: 14px;
+      border-radius: 12px;
+      background: var(--card);
+      display: flex;
+      align-items: center;
+    }
+    #hero canvas, #hero svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: block; }
+    #hero h1 { position: relative; z-index: 2; margin: 0; padding: 0 16px; }
+    #modeTabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    #modeTabs button { flex: 1; background: var(--card); color: var(--text-dim); font-size: 15px; padding: 12px 2px; border: 1px solid var(--border); }
+    #modeTabs button.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+    #tabs, #wtabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    #tabs button, #wtabs button { flex: 1; background: var(--secondary-bg); color: var(--text-dim); font-size: 14px; padding: 10px 2px; }
+    #tabs button.active, #wtabs button.active { background: var(--accent); color: var(--on-accent); }
+    .exRow input, .setRow input { font-size: 16px; padding: 9px; border: 1px solid var(--border); border-radius: 8px; min-width: 0; background: var(--card); color: var(--text); }
+    .dropTag { flex: 0 0 auto; align-self: center; font-size: 12px; color: var(--text-dim); }
+    .setRow.drop input { border-style: dashed; }
+    #rIng { font-family: inherit; resize: vertical; }
+#bkBox { font-size: 16px; padding: 9px; border: 1px solid var(--border); border-radius: 8px; width: 100%; margin-bottom: 8px; font-family: inherit; resize: vertical; background: var(--card); color: var(--text); }
+    .steps { font-size: 14px; padding-left: 20px; margin: 6px 0; }
+    .steps li { margin-bottom: 4px; }
+    img { max-width: 100%; border-radius: 8px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+  <!-- Pinned status bar for an active workout — the closest a home-screen web app can get to
+       Apple Music's now-playing bar (that's a native iOS feature, Live Activities, no web page
+       can touch it). This one stays pinned to the top of THIS app's own screen instead: elapsed
+       workout time + a jump-back-in button, or a rest countdown when one's running. See the
+       "Active workout bar" JS section for the honest version of what it can and can't do. -->
+  <div id="activeWorkoutBar">
+    <div id="awbInfo"></div>
+    <div id="awbControls"></div>
+  </div>
+
+  <div id="hero">
+    <canvas id="heroBg" aria-hidden="true"></canvas>
+    <svg id="heroMark" viewBox="0 0 600 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="505" cy="70" r="128" fill="none" stroke="var(--accent)" stroke-width="1" opacity="0.16"/>
+      <circle cx="505" cy="70" r="92"  fill="none" stroke="var(--accent)" stroke-width="1.25" opacity="0.28"/>
+      <circle cx="505" cy="70" r="62"  fill="none" stroke="var(--accent)" stroke-width="1" opacity="0.4"/>
+      <circle cx="505" cy="70" r="36"  fill="none" stroke="var(--accent)" stroke-width="1.75" opacity="0.65"/>
+      <circle cx="505" cy="70" r="14"  fill="var(--accent)" opacity="0.18"/>
+      <circle cx="505" cy="70" r="7"   fill="var(--accent)" opacity="0.4"/>
+      <circle cx="505" cy="70" r="3"   fill="var(--accent)"/>
+    </svg>
+    <h1 id="appTitle">Calorie Tracker</h1>
+  </div>
+  <p id="status">Ready</p>
+  <p id="debug"></p>
+<div id="undoBar" class="card" style="display:none"></div>
+
+  <div id="modeTabs">
+    <button class="mode active" data-section="eating">Eating</button>
+    <button class="mode" data-section="fitness">Fitness</button>
+  </div>
+
+  <div id="eatingSection">
+  <div id="tabs">
+    <button class="tab active" data-view="todayView">Today</button>
+    <button class="tab" data-view="historyView">History</button>
+    <button class="tab" data-view="weightView">Weight</button>
+    <button class="tab" data-view="recipeView">Recipes</button>
+  </div>
+
+  <div id="todayView" class="view">
+    <div class="card" id="saved"></div>
+    <div class="card" id="today"></div>
+    <button id="addBtn" class="fab">+</button>
+    <div id="addMenu" class="sheet" style="display:none">
+      <button class="addOption" data-mode="photo">Take a photo</button>
+      <button class="addOption" data-mode="bc">Scan a barcode</button>
+      <button class="addOption" data-mode="search">Search a food</button>
+      <button class="addOption" data-mode="dine">Dining hall food</button>
+      <button class="addOption" data-mode="desc">Describe what I ate</button>
+      <button class="addOption" data-mode="manual">Type numbers myself</button>
+      <button id="addCancel" class="grey">Cancel</button>
+    </div>
+    <div class="card entryMethod" id="descCard">
+      <input id="desc" type="text" placeholder="Describe what you ate">
+      <input id="descRestaurant" type="text" placeholder="Restaurant (optional) — e.g. Chipotle">
+      <button id="descBtn">Ask the AI</button>
+    </div>
+    <div class="card entryMethod" id="bcCard">
+      <input id="bc" type="text" inputmode="numeric" placeholder="Barcode number">
+      <button id="lookupBtn">Look up</button>
+    </div>
+    <!-- Real food database search (USDA FoodData Central) - a typed name instead of a
+         photo/barcode/manual guess. Feeds the same per100/portion UI the barcode path uses. -->
+    <div class="card entryMethod" id="searchCard">
+      <input id="foodSearch" type="text" placeholder="Search a food, e.g. banana">
+      <button id="foodSearchBtn">Search</button>
+      <div id="foodSearchResults"></div>
+    </div>
+    <!-- Pick your way down to one item at UIUC's own dining halls and get its real printed
+         nutrition label — same data the Illinois app shows, pulled live via a serverless
+         function that drives a real background browser (see dining-proxy.js for why that's
+         needed). Each select only appears once the one before it has been chosen. -->
+    <div class="card entryMethod" id="dineCard">
+      <select id="dineHall">
+        <option value="">Pick a dining hall</option>
+        <option value="1">Ikenberry (Ike)</option>
+        <option value="11">ISR</option>
+        <option value="22">PAR</option>
+        <option value="29">Lincoln/Allen (LAR)</option>
+      </select>
+      <select id="dineStation" style="display:none"><option value="">Pick a station</option></select>
+      <select id="dineMeal" style="display:none"><option value="">Pick a date and meal</option></select>
+      <select id="dineItem" style="display:none"><option value="">Pick an item</option></select>
+      <div class="sub" id="dineNote"></div>
+    </div>
+    <div class="card" id="portion" style="display:none">
+      <div id="portionName"></div>
+      <input id="grams" type="number" placeholder="grams">
+      <button id="usePortion">Use this amount</button>
+    </div>
+    <div class="entryMethod" id="photoCard">
+      <label for="photo" class="photobtn">Take a photo</label>
+      <input type="file" accept="image/*" capture="environment" id="photo">
+    </div>
+    <button id="manualBtn" style="display:none">Type numbers myself</button>
+    <img id="preview">
+    <button id="saveBtn" style="display:none">Save these numbers</button>
+    <div class="card" id="editor" style="display:none">
+      <input id="fName" placeholder="Meal name">
+      <div class="nums">
+        <input id="fKcal" type="number" placeholder="kcal">
+        <input id="fProtein" type="number" placeholder="protein g">
+        <input id="fFat" type="number" placeholder="fat g">
+        <input id="fCarbs" type="number" placeholder="carbs g">
+      </div>
+      <div class="mealhead">Photo</div>
+      <div class="sub" id="fPhotoHint">Required — so the app can recognise this food from a photo later.</div>
+      <img id="fPhotoPreview" style="display:none">
+      <label for="fPhoto" class="photobtn">Take a photo</label>
+      <input type="file" accept="image/*" capture="environment" id="fPhoto">
+      <button id="confirmSave">Save meal</button>
+      <button id="cancelSave" class="grey">Cancel</button>
+    </div>
+    <div id="logBtns" style="display:none">
+<div class="sub">How many?</div>
+      <div id="qtyRow">
+        <button id="qtyMinus" type="button" class="grey">−</button>
+        <input id="qtyInput" type="number" inputmode="decimal" step="0.5" value="1">
+        <button id="qtyPlus" type="button" class="grey">+</button>
+      </div>
+      <button class="meal">Breakfast</button>
+      <button class="meal">Lunch</button>
+      <button class="meal">Dinner</button>
+      <button class="meal">Snack</button>
+    </div>
+  </div>
+
+  <div id="historyView" class="view" style="display:none">
+    <div class="card" id="history">Nothing logged yet</div>
+  </div>
+
+  <div id="weightView" class="view" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <b style="font-size:18px">Weight</b>
+      <button id="settingsBtn" class="grey">⚙ Settings</button>
+    </div>
+    <div id="calcPanel" style="display:none">
+      <div class="card">
+        <b>Work out your targets</b>
+        <div class="sub">Mifflin-St Jeor. Redo this when your weight has moved a few pounds.</div>
+        <select id="cSex"><option value="m">Male</option><option value="f">Female</option></select>
+        <input id="cAge" type="number" placeholder="Age">
+        <input id="cFt" type="number" placeholder="Height — feet">
+        <input id="cIn" type="number" placeholder="Height — inches">
+        <input id="cLbs" type="number" placeholder="Weight now, in lbs">
+        <input id="cTarget" type="number" placeholder="Goal weight in lbs">
+        <select id="cAct">
+          <option value="1.2">Sedentary — little or no exercise</option>
+          <option value="1.375">Light — 1 to 3 days a week</option>
+          <option value="1.55" selected>Moderate — 3 to 5 days a week</option>
+          <option value="1.725">Hard — 6 to 7 days a week</option>
+          <option value="1.9">Athlete — training twice a day</option>
+        </select>
+        <select id="cDir">
+          <option value="bulk" selected>Bulk — gain weight</option>
+          <option value="cut">Cut — lose fat</option>
+          <option value="hold">Maintain</option>
+        </select>
+        <select id="cRate">
+          <option value="slow">Slow and lean</option>
+          <option value="mod" selected>Moderate</option>
+          <option value="fast">Aggressive</option>
+        </select>
+        <button id="cCalc">Work out my targets</button>
+      </div>
+      <div class="card" id="cResult"></div>
+<div class="card">
+        <b>Backup</b>
+        <div class="sub">Everything is stored in this browser only. If the phone is lost or the browser is cleared, it is gone. Back up now and then.</div>
+        <div class="btnStack">
+          <button id="bkMake">Make a backup</button>
+          <button id="bkCopy" class="grey">Copy to clipboard</button>
+          <button id="bkDownload" class="grey">Download as a file</button>
+        </div>
+        <textarea id="bkBox" rows="4" placeholder="Your backup text appears here. To restore, paste a backup in and tap Restore."></textarea>
+        <button id="bkRestore" class="grey">Restore from the box above</button>
+      </div>
+    </div>
+    <div class="card" id="advice"></div>
+    <div class="card">
+      <b>Log a weigh-in</b>
+      <input id="wDate" type="date">
+      <input id="wLbs" type="number" step="0.1" placeholder="Weight in lbs">
+      <button id="wAdd">Log weight</button>
+    </div>
+    <div class="card">
+      <b>Trend</b>
+      <div class="sub" id="chartNote"></div>
+      <canvas id="wChart"></canvas>
+    </div>
+    <div class="card" id="weight"></div>
+  </div>
+
+  <div id="recipeView" class="view" style="display:none">
+  <div class="card">
+    <b>New recipe</b>
+    <input id="rName" placeholder="Recipe name">
+    <textarea id="rIng" rows="6" placeholder="One ingredient per line, with amounts:&#10;2 cups white rice&#10;1 lb chicken breast&#10;2 tbsp olive oil"></textarea>
+    <input id="rServings" type="number" step="0.5" placeholder="How many servings does it make?">
+    <div class="btnStack">
+      <button id="rCalc">Work out the macros</button>
+      <button id="rRead" class="grey">Read a pasted recipe</button>
+      <label for="rPhoto" class="photobtn grey">Photograph a recipe</label>
+      <input type="file" accept="image/*" capture="environment" id="rPhoto">
+    </div>
+  </div>
+  <div class="card" id="rResult">Nothing worked out yet — fill in a recipe above.</div>
+</div>
+  </div>
+
+  <div id="fitnessSection" style="display:none">
+    <div id="wtabs">
+      <button class="wtab active" data-wview="wRoutinesSub">Routines</button>
+      <button class="wtab" data-wview="wLogSub">Log workout</button>
+      <button class="wtab" data-wview="wRanksSub">Progress</button>
+      <button class="wtab" data-wview="wGoalsSub">Goals</button>
+    </div>
+
+    <div id="wRoutinesSub" class="wview">
+      <div class="card" id="routineList"></div>
+      <button id="newRoutineBtn" class="fab">+ New routine</button>
+      <div class="card" id="routineEditor" style="display:none">
+        <input id="rtName" placeholder="Routine name — e.g. Push day">
+        <div id="rtExercises"></div>
+        <button id="rtAddExercise" class="grey" type="button">+ Add exercise</button>
+        <button id="rtSave">Save routine</button>
+        <button id="rtCancel" class="grey">Cancel</button>
+      </div>
+    </div>
+
+    <div id="wLogSub" class="wview" style="display:none">
+      <div class="card">
+        <b>Pick a routine</b>
+        <select id="wRoutinePick"><option value="">Choose a routine</option></select>
+      </div>
+      <div id="wExerciseLog"></div>
+      <div class="card" id="restControls" style="display:none">
+        <b>Rest timer</b>
+        <div class="sub">Vibrates, beeps, and — if you've allowed notifications — sends a lock-screen alert when it ends. Only actually reliable while the app is open or the phone's unlocked; see the notes on this if you want the honest version of the limit.</div>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="restQuick grey" data-secs="60" style="flex:1">60s</button>
+          <button type="button" class="restQuick grey" data-secs="90" style="flex:1">90s</button>
+          <button type="button" class="restQuick grey" data-secs="120" style="flex:1">120s</button>
+        </div>
+      </div>
+      <button id="wFinish" style="display:none">Finish workout</button>
+    </div>
+
+    <div id="wRanksSub" class="wview" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center">
+            <span id="streakIcon" style="display:inline-flex;width:24px;height:24px;margin-right:8px;flex:none"></span>
+            <b id="streakHeadline">No streak yet</b>
+          </div>
+          <div class="sub" id="streakSub"></div>
+        </div>
+        <div id="streakCal"></div>
+      </div>
+      <div class="card" id="wSexNote"></div>
+      <div class="card" id="bodyMapCard">
+        <b>By muscle group</b>
+        <div class="sub">Averages the rank of every exercise you log that trains that muscle. Front and back view — tap a region to jump to its exercises below.</div>
+        <div id="bodyMap"></div>
+      </div>
+      <div class="card" id="wRankList"></div>
+    </div>
+
+    <div id="wGoalsSub" class="wview" style="display:none">
+      <div class="card" id="goalList"></div>
+      <button id="newGoalBtn" class="fab">+ New goal</button>
+      <div class="card" id="goalEditor" style="display:none">
+        <input id="gName" placeholder="Exercise — e.g. Bench Press">
+        <div class="nums">
+          <input id="gWeight" type="number" placeholder="Target weight, lbs">
+          <input id="gReps" type="number" placeholder="Target reps" value="1">
+        </div>
+        <div class="sub">Leave reps at 1 for a "get to this weight for a single" goal.</div>
+        <input id="gDate" type="date">
+        <button id="gSave">Save goal</button>
+        <button id="gCancel" class="grey">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.23.0/umd/index.min.js"></script>
+  <script>
+    // Hero banner's ambient particle field (algorithmic-art technique, hand-rolled in plain
+    // canvas rather than pulling in the skill's usual p5.js CDN dependency - this app's own
+    // design rule, agreed 2026-08-07, is one dependency-free index.html, so the CDN script tag
+    // would have broken that on a phone with no signal the moment it loaded). The math is the
+    // same idea as the skill's "Asymptotic Bloom" piece: each particle's speed toward the center
+    // point decays as a power of its remaining distance, so it approaches forever and never
+    // quite arrives - which is why a soft ring of brightness collects just outside the exact
+    // center rather than the center itself ever filling in. Runs at ~30fps (timestamp-throttled,
+    // not every requestAnimationFrame tick) and stops entirely when the tab/app is backgrounded
+    // or the OS has "Reduce Motion" on, so it doesn't quietly drain battery in a pocket.
+    (function () {
+      const canvas = document.getElementById('heroBg');
+      if (!canvas || !canvas.getContext) return;
+      const ctx = canvas.getContext('2d');
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Logical coordinate space matches the heroMark SVG's viewBox exactly, center included,
+      // so the moving particles spiral toward the same point the static rings are drawn around.
+      const LW = 600, LH = 140, CX = 505, CY = 70;
+      const maxDist = Math.hypot(LW, LH) * 0.55;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      function resize() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = Math.max(1, Math.round(rect.width * dpr));
+        canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const N = 28;
+      const parts = [];
+      function respawn(p, randomPhase) {
+        p.angle = Math.random() * Math.PI * 2;
+        p.radius = maxDist * (0.85 + Math.random() * 0.3);
+        p.life = 0;
+        p.maxLife = 260 + Math.random() * 480;
+        p.size = 0.7 + Math.random() * 1.3;
+        p.noiseOff = Math.random() * 1000;
+        if (randomPhase) p.life = Math.floor(Math.random() * p.maxLife);
+      }
+      for (let i = 0; i < N; i++) { const p = {}; respawn(p, true); parts.push(p); }
+
+      let running = true;
+      let lastDraw = 0;
+      function step(ts) {
+        if (!running) return;
+        requestAnimationFrame(step);
+        if (ts - lastDraw < 33) return; // cap ~30fps regardless of the display's real refresh rate
+        lastDraw = ts;
+
+        const styles = getComputedStyle(document.body);
+        const accent = styles.getPropertyValue('--accent').trim() || '#4fd1e8';
+        const cardBg = styles.getPropertyValue('--card').trim() || '#17171d';
+        const sx = canvas.width / LW, sy = canvas.height / LH;
+
+        // Translucent overlay instead of a hard clear: this is the trail memory that turns
+        // discrete dots into soft arcs as they spiral inward.
+        ctx.fillStyle = cardBg;
+        ctx.globalAlpha = 0.16;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1;
+
+        ctx.fillStyle = accent;
+        for (let i = 0; i < parts.length; i++) {
+          const p = parts[i];
+          p.life++;
+          const t = Math.max(0, Math.min(1, p.radius / maxDist));
+          p.radius -= 0.9 * Math.pow(t, 1.6); // radial decay: speed collapses toward zero near the center
+          p.angle += 0.012 + Math.sin(p.noiseOff + ts * 0.0008) * 0.006; // gentle spiral drift, not a straight fall
+          if (p.radius < maxDist * 0.03 || p.life > p.maxLife) respawn(p, false);
+
+          const x = (CX + Math.cos(p.angle) * p.radius) * sx;
+          const y = (CY + Math.sin(p.angle) * p.radius) * sy;
+          const near = 1 - Math.max(0, Math.min(1, p.radius / maxDist));
+          ctx.globalAlpha = 0.15 + near * 0.55;
+          ctx.beginPath();
+          ctx.arc(x, y, p.size * Math.min(sx, sy), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      if (reduceMotion) {
+        // One calm static frame instead of a moving one - same visual language, no motion.
+        const styles = getComputedStyle(document.body);
+        ctx.fillStyle = styles.getPropertyValue('--card').trim() || '#17171d';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else {
+        requestAnimationFrame(step);
+        document.addEventListener('visibilitychange', function () {
+          running = !document.hidden;
+          if (running) requestAnimationFrame(step);
+        });
+      }
+    })();
+
+    // Non-blocking replacement for the browser's native prompt()/alert()/confirm(). Those
+    // freeze the whole JS thread until a person answers - harmless with a real human at the
+    // wheel, but this exact prompt() had already frozen two different test environments
+    // before this fix (Calorie App notes, 2026-08-23), because a frozen dialog silently kills
+    // every event listener defined later in the same script if nothing is there to answer it.
+    // A real DOM overlay runs on the ordinary event loop instead, so it can't do that - and as
+    // a side effect it lets a key be skipped and asked for later instead of blocking the whole
+    // app before a first-time user has done anything at all.
+    function askForText(title, message, placeholder) {
+      return new Promise(function (resolve) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px';
+        overlay.innerHTML = '<div class="card" style="max-width:340px;width:100%">' +
+          '<b>' + title + '</b><div class="sub" style="margin:6px 0 10px">' + message + '</div>' +
+          '<input id="askInput" placeholder="' + (placeholder || '') + '" style="font-size:16px;padding:9px;border:1px solid var(--border);border-radius:8px;width:100%;margin-bottom:8px;background:var(--card);color:var(--text);box-sizing:border-box">' +
+          '<div class="btnStack"><button id="askOk">Save</button><button id="askCancel" class="grey">Not now</button></div>' +
+          '</div>';
+        document.body.appendChild(overlay);
+        const input = overlay.querySelector('#askInput');
+        input.focus();
+        function done(value) {
+          document.body.removeChild(overlay);
+          resolve(value);
+        }
+        overlay.querySelector('#askOk').addEventListener('click', function () { done(input.value.trim() || null); });
+        overlay.querySelector('#askCancel').addEventListener('click', function () { done(null); });
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') done(input.value.trim() || null); });
+      });
+    }
+
+    // The Gemini key is now asked for lazily, the first time something actually needs it (a
+    // photo, a typed description, a recipe) instead of on page load - so opening the app fresh
+    // and logging a barcode or typing numbers in manually never has to see this at all.
+    let apiKey = localStorage.getItem('geminiKey');
+    async function ensureApiKey() {
+      if (apiKey) return apiKey;
+      const key = await askForText('Gemini API key needed', 'This app uses your own free Google Gemini key to read photos and descriptions. Get one free at aistudio.google.com, then paste it here. Skip this and everything except AI food recognition still works.', 'Paste your Gemini API key');
+      if (key) { apiKey = key; store('geminiKey', key); }
+      return apiKey;
+    }
+    const photo = document.getElementById('photo');
+    const preview = document.getElementById('preview');
+    const statusEl = document.getElementById('status');
+    const debugEl = document.getElementById('debug');
+const undoBar = document.getElementById('undoBar');
+let undoTimer;
+function showUndo(label, restore) {
+  clearTimeout(undoTimer);
+  undoBar.innerHTML = '<span>' + label + '</span><button id="undoBtn" class="grey">Undo</button>';
+  undoBar.style.display = 'flex';
+  undoBar._restore = restore;
+  undoTimer = setTimeout(function () { undoBar.style.display = 'none'; }, 5000);
+}
+undoBar.addEventListener('click', function (ev) {
+  if (ev.target.id !== 'undoBtn') return;
+  if (undoBar._restore) undoBar._restore();
+  undoBar.style.display = 'none';
+  clearTimeout(undoTimer);
+});
+async function safeFetch(url, opts) {
+  if (!navigator.onLine) {
+    statusEl.textContent = 'No internet connection — try again once you are back online';
+    return null;
+  }
+  try {
+    return await fetch(url, opts);
+  } catch (e) {
+    statusEl.textContent = 'Could not reach the server — check your connection and try again';
+    return null;
+  }
+}
+    const appTitle = document.getElementById('appTitle');
+    let statusTimer;
+    new MutationObserver(function () {
+      statusEl.classList.remove('fade');
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(function () { statusEl.classList.add('fade'); }, 3000);
+    }).observe(statusEl, { childList: true, characterData: true, subtree: true });
+    let pressTimer;
+    function startPress() { pressTimer = setTimeout(function () { debugEl.classList.toggle('show'); }, 600); }
+    function endPress() { clearTimeout(pressTimer); }
+    appTitle.addEventListener('touchstart', startPress);
+    appTitle.addEventListener('touchend', endPress);
+    appTitle.addEventListener('mousedown', startPress);
+    appTitle.addEventListener('mouseup', endPress);
+    const savedEl = document.getElementById('saved');
+    const saveBtn = document.getElementById('saveBtn');
+    const logBtns = document.getElementById('logBtns');
+    const editor = document.getElementById('editor');
+    const fName = document.getElementById('fName');
+    const fKcal = document.getElementById('fKcal');
+    const fProtein = document.getElementById('fProtein');
+    const fFat = document.getElementById('fFat');
+    const fCarbs = document.getElementById('fCarbs');
+    const confirmSave = document.getElementById('confirmSave');
+    const cancelSave = document.getElementById('cancelSave');
+    const fPhoto = document.getElementById('fPhoto');
+    const fPhotoPreview = document.getElementById('fPhotoPreview');
+
+    // Enter key confirms a box and jumps to the next one, instead of just sitting there —
+    // requested 2026-08-25. `chainEnter` wires a fixed list of fields in order: Enter on any
+    // field but the last moves focus to the next id in the list; Enter on the last one runs
+    // whatever `finalAction` was passed (here, clicking Save meal) instead of doing nothing.
+    // Reused below for the workout set-logging fields too, just with a dynamic list built at
+    // click time instead of a fixed one (rows get added/removed as you log a workout).
+    function chainEnter(ids, finalAction) {
+      ids.forEach(function (id, i) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('keydown', function (ev) {
+          if (ev.key !== 'Enter') return;
+          ev.preventDefault();
+          const nextId = ids[i + 1];
+          const next = nextId ? document.getElementById(nextId) : null;
+          if (next) next.focus();
+          else if (finalAction) finalAction();
+          else el.blur();
+        });
+      });
+    }
+    chainEnter(['fName', 'fKcal', 'fProtein', 'fFat', 'fCarbs'], function () { confirmSave.click(); });
+
+    function setSavePhoto(b64) {
+      savePhoto = b64 || null;
+      if (savePhoto) {
+        fPhotoPreview.src = 'data:image/jpeg;base64,' + savePhoto;
+        fPhotoPreview.style.display = 'block';
+      } else {
+        fPhotoPreview.removeAttribute('src');
+        fPhotoPreview.style.display = 'none';
+      }
+    }
+
+    fPhoto.addEventListener('change', async function () {
+      const file = fPhoto.files[0];
+      if (!file) return;
+      statusEl.textContent = 'Saving the photo...';
+      setSavePhoto(await shrink(file, 700));
+      statusEl.textContent = 'Photo attached — tap Save meal';
+    });
+    const bc = document.getElementById('bc');
+    const lookupBtn = document.getElementById('lookupBtn');
+    const desc = document.getElementById('desc');
+    const descRestaurant = document.getElementById('descRestaurant');
+    const descBtn = document.getElementById('descBtn');
+    const manualBtn = document.getElementById('manualBtn');
+    const portion = document.getElementById('portion');
+    const portionName = document.getElementById('portionName');
+    const grams = document.getElementById('grams');
+    const usePortion = document.getElementById('usePortion');
+    let per100 = null;
+    let per100Kind = 'barcode'; // which entry path filled per100 — labels the status line in showFood()
+    const todayEl = document.getElementById('today');
+
+    // Shared "nothing here yet" icon, used by the today-log, Weigh-ins,
+    // History, Routines and Goals empty states. Defined here, early, on
+    // purpose: showToday() runs a few lines down (line ~490 originally) and
+    // needs this available immediately. The first version of this constant
+    // was defined much later in the file, near the streak-icon code - that
+    // looked fine reading the code, but showToday() calling it before that
+    // later line had actually executed threw "Cannot access before
+    // initialization" and silently broke every listener defined after it in
+    // the whole script. Caught only by loading the real app and checking the
+    // console, not by reading the source - worth remembering as the same
+    // class of bug as the prompt() issue documented in the Calorie App notes.
+    // The "+" badge uses var(--accent)/var(--on-accent) so it automatically
+    // matches whichever mode (Eating=cyan, Fitness=purple) it's shown in.
+    const EMPTY_STATE_ICON = '<svg viewBox="0 0 100 100" width="44" height="44" xmlns="http://www.w3.org/2000/svg">'
+      + '<path d="M 30 14 C 29 12 31 10 34 10 L 40 10 C 41 6 45 4 50 4 C 55 4 59 6 60 10 L 66 10 C 69 10 71 12 70 15 L 72 82 C 72 88 68 92 62 92 L 38 92 C 32 92 28 87 28 81 L 30 14 Z" fill="#2a2a33" stroke="#4a4a52" stroke-width="1.6"/>'
+      + '<path d="M 70 15 L 78 24 L 68 22 Z" fill="#1e1e26" stroke="#4a4a52" stroke-width="1.2"/>'
+      + '<line x1="37" y1="38" x2="61" y2="37" stroke="#5a5a66" stroke-width="3.4" stroke-linecap="round"/>'
+      + '<line x1="37" y1="50" x2="55" y2="51" stroke="#5a5a66" stroke-width="3.4" stroke-linecap="round"/>'
+      + '<line x1="37" y1="63" x2="58" y2="62" stroke="#5a5a66" stroke-width="3.4" stroke-linecap="round"/>'
+      + '<circle cx="66" cy="80" r="13" fill="var(--accent)"/>'
+      + '<line x1="66" y1="74" x2="66" y2="86" stroke="var(--on-accent)" stroke-width="3" stroke-linecap="round"/>'
+      + '<line x1="60" y1="80" x2="72" y2="80" stroke="var(--on-accent)" stroke-width="3" stroke-linecap="round"/>'
+      + '</svg>';
+    function emptyStateHTML(message) {
+      return '<div style="text-align:center;padding:12px 0">' + EMPTY_STATE_ICON
+        + '<div class="sub" style="margin-top:6px">' + message + '</div></div>';
+    }
+
+    // Today screen's macro-summary icons - one per macro, checked at both
+    // full size and actual ~22px deployed size before this went in (see
+    // Design Skill notes, 2026-08-23). Same reason as EMPTY_STATE_ICON for
+    // living here early: showToday() needs these the moment it first runs.
+    const MACRO_ICON_CAL = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M 50 92 C 30 92 22 78 24 62 C 25 52 32 46 30 36 C 29 30 33 24 38 20 C 36 30 44 32 44 24 C 44 14 52 8 58 4 C 54 16 62 18 66 28 C 70 38 74 34 72 24 C 82 34 84 50 76 60 C 80 58 82 52 80 46 C 84 56 82 72 68 84 C 74 78 76 70 74 64 C 70 78 60 92 50 92 Z" fill="#ff9f0a"/></svg>';
+    const MACRO_ICON_PROTEIN = '<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">'
+      + '<path d="M 6 40 C -1 34 -1 24 7 18 C 14 12 26 12 32 20 C 38 16 45 18 46 26 C 47 34 42 42 33 44 C 36 50 33 56 26 56 C 18 56 10 52 6 46 C 3 44 3 42 6 40 Z" fill="#e0637c"/>'
+      + '<path d="M 10 44 C 14 49 21 51 26 49 C 21 48 15 46 11 41 Z" fill="#c04863"/>'
+      + '<path d="M 32 20 C 36 15 40 10 43 5" stroke="#e3c391" stroke-width="7" stroke-linecap="round" fill="none"/>'
+      + '<circle cx="44" cy="4" r="5" fill="#f3ddb0"/></svg>';
+    const MACRO_ICON_FAT = '<svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">'
+      + '<path d="M 20 4 C 26 16 36 28 34 40 C 33 50 25 56 17 54 C 8 52 3 44 6 34 C 9 24 15 14 20 4 Z" fill="#ffd23d"/>'
+      + '<path d="M 15 40 C 15 44 18 47 22 46" stroke="#fff3c4" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>';
+    const MACRO_ICON_CARBS = '<svg viewBox="0 0 44 60" xmlns="http://www.w3.org/2000/svg">'
+      + '<path d="M 20 54 C 18 40 22 26 30 10" stroke="#c99a52" stroke-width="3" stroke-linecap="round" fill="none"/>'
+      + '<path d="M 12 54 C 12 42 14 30 18 18" stroke="#b8853d" stroke-width="2.6" stroke-linecap="round" fill="none"/>'
+      + '<ellipse cx="27" cy="16" rx="3" ry="4.4" fill="#e8c877" transform="rotate(-20 27 16)"/>'
+      + '<ellipse cx="22" cy="24" rx="3" ry="4.4" fill="#e8c877" transform="rotate(15 22 24)"/>'
+      + '<ellipse cx="30" cy="27" rx="3" ry="4.4" fill="#e8c877" transform="rotate(-25 30 27)"/></svg>';
+
+    // Streak flame icon, two states — used by both the workout streak (Fitness > Progress) and
+    // the food-logging streak added to Today below. Lives here, early, for the exact same
+    // reason EMPTY_STATE_ICON does two comments up: showToday() runs at page load, well before
+    // the Fitness section's own code further down the file, so a const defined down there would
+    // throw "Cannot access before initialization" the moment Today tried to read it. Moved up
+    // from where it originally lived near the workout streak code — nothing else changed about
+    // it, this is a pure relocation.
+    // Active: warm layered flame (outer/inner fill, a flat hard-edge shadow, a small highlight)
+    // for a live streak. Inactive: the same silhouette in flat dim gray, no inner detail, for
+    // "no streak yet" — lower visual weight on purpose so it doesn't compete with the active one.
+    const STREAK_ICON_ACTIVE = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">'
+      + '<defs><clipPath id="streakFlameClip"><path d="M 50 92 C 30 92 22 78 24 62 C 25 52 32 46 30 36 C 29 30 33 24 38 20 C 36 30 44 32 44 24 C 44 14 52 8 58 4 C 54 16 62 18 66 28 C 70 38 74 34 72 24 C 82 34 84 50 76 60 C 80 58 82 52 80 46 C 84 56 82 72 68 84 C 74 78 76 70 74 64 C 70 78 60 92 50 92 Z"/></clipPath></defs>'
+      + '<path d="M 50 92 C 30 92 22 78 24 62 C 25 52 32 46 30 36 C 29 30 33 24 38 20 C 36 30 44 32 44 24 C 44 14 52 8 58 4 C 54 16 62 18 66 28 C 70 38 74 34 72 24 C 82 34 84 50 76 60 C 80 58 82 52 80 46 C 84 56 82 72 68 84 C 74 78 76 70 74 64 C 70 78 60 92 50 92 Z" fill="#ff8a3d" stroke="#7a3313" stroke-width="1.4"/>'
+      + '<g clip-path="url(#streakFlameClip)">'
+      + '<path d="M 24 62 C 25 52 32 46 30 36 C 29 30 33 24 38 20 C 37 34 32 40 33 50 C 34 62 30 72 34 84 C 30 84 26 76 24 62 Z" fill="#c73f1c"/>'
+      + '<path d="M 54 86 C 42 86 36 74 38 62 C 39 54 45 50 43 42 C 42 36 46 30 50 26 C 48 34 54 36 54 30 C 54 22 60 18 64 14 C 61 22 66 26 68 34 C 70 42 66 48 62 44 C 66 50 68 60 62 68 C 64 62 62 56 60 54 C 60 66 60 78 54 86 Z" fill="#ffcf6b"/>'
+      + '<ellipse cx="59" cy="14" rx="5" ry="7" fill="#ffe6a8" transform="rotate(-18 59 14)"/>'
+      + '<path d="M 60 30 C 63 26 66 24 68 20 C 67 26 65 30 63 34 C 61 33 60 32 60 30 Z" fill="#fff3d6"/>'
+      + '</g></svg>';
+    const STREAK_ICON_INACTIVE = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">'
+      + '<path d="M 50 92 C 30 92 22 78 24 62 C 25 52 32 46 30 36 C 29 30 33 24 38 20 C 36 30 44 32 44 24 C 44 14 52 8 58 4 C 54 16 62 18 66 28 C 70 38 74 34 72 24 C 82 34 84 50 76 60 C 80 58 82 52 80 46 C 84 56 82 72 68 84 C 74 78 76 70 74 64 C 70 78 60 92 50 92 Z" fill="#23232b" stroke="#4a4a52" stroke-width="1.6"/>'
+      + '</svg>';
+
+    // Meal-type section icons - Today's meal list was grouped under plain text headers
+    // (Breakfast/Lunch/Dinner/Snack) with no graphic at all; from the Design Skill icon batch,
+    // checked clean at both full size and ~16px small size (Design Skill notes, 2026-08-24).
+    // Same early-in-the-file placement as the other icon constants above, for the same reason -
+    // showToday() runs at page load and needs these the first time it does.
+    const MEAL_ICON_BREAKFAST = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">'
+      + '<path d="M 14 66 C 14 84 30 88 50 88 C 70 88 86 84 86 66 Z" fill="#d9dde6" stroke="#8a90a0" stroke-width="2.4"/>'
+      + '<path d="M 14 66 C 14 84 30 88 50 88 L 50 66 Z" fill="#c0c6d4"/>'
+      + '<path d="M 30 62 A 20 20 0 0 1 70 62 Z" fill="#ffcf3d" stroke="#c98a1a" stroke-width="2"/>'
+      + '<path d="M 50 30 L 50 22 M 34 38 L 28 32 M 66 38 L 72 32" stroke="#ffcf3d" stroke-width="4" stroke-linecap="round"/>'
+      + '</svg>';
+    const MEAL_ICON_LUNCH = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">'
+      + '<path d="M 16 44 L 50 20 L 84 44 L 84 52 L 16 52 Z" fill="#e0a24d" stroke="#8a5a1a" stroke-width="2.2"/>'
+      + '<rect x="18" y="52" width="64" height="7" rx="2" fill="#3fae5a"/>'
+      + '<rect x="18" y="59" width="64" height="7" rx="2" fill="#e8394f"/>'
+      + '<path d="M 16 66 L 50 84 L 84 66 L 84 74 L 50 92 L 16 74 Z" fill="#e0a24d" stroke="#8a5a1a" stroke-width="2.2"/>'
+      + '</svg>';
+    const MEAL_ICON_DINNER = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">'
+      + '<circle cx="50" cy="52" r="34" fill="#d9dde6" stroke="#8a90a0" stroke-width="2.4"/>'
+      + '<circle cx="50" cy="52" r="22" fill="#c0c6d4"/>'
+      + '<path d="M 32 24 L 32 44 M 27 24 L 27 38 C 27 42 32 42 32 38 M 37 24 L 37 38 C 37 42 32 42 32 38" stroke="#565c68" stroke-width="3" fill="none" stroke-linecap="round"/>'
+      + '<path d="M 68 24 C 64 30 64 36 68 40 L 68 80" stroke="#565c68" stroke-width="4" fill="none" stroke-linecap="round"/>'
+      + '</svg>';
+    const MEAL_ICON_SNACK = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">'
+      + '<path d="M 50 20 C 62 20 68 30 64 38 C 76 38 80 50 72 56 C 78 64 74 76 62 76 C 60 82 48 86 42 80 C 32 86 20 80 20 70 C 12 68 10 56 20 50 C 14 44 20 32 32 32 C 32 26 42 20 50 20 Z" fill="#c9862f" stroke="#7a4e10" stroke-width="2.2"/>'
+      + '<g fill="#3d2410"><circle cx="38" cy="42" r="4"/><circle cx="54" cy="38" r="3.6"/><circle cx="60" cy="54" r="4"/><circle cx="44" cy="60" r="3.6"/><circle cx="30" cy="58" r="3.6"/></g>'
+      + '</svg>';
+    const MEAL_ICONS = { Breakfast: MEAL_ICON_BREAKFAST, Lunch: MEAL_ICON_LUNCH, Dinner: MEAL_ICON_DINNER, Snack: MEAL_ICON_SNACK };
+
+    // Builds one stat cell (icon, label, value/target, slim progress bar).
+    // Same over/under-target color rule the old plain bar() used - this
+    // replaces bar()'s only caller (the Today macro summary). Goals has its
+    // own separate inline .bar/.fill markup and was never touched by this.
+    function macroCell(icon, label, used, target, unit) {
+      const pct = Math.min(100, Math.round(used / target * 100));
+      const color = used > target ? 'var(--warn)' : 'var(--good)';
+      return '<div class="macroCell"><div class="mcHead">' + icon + '<span>' + label + '</span></div>'
+        + '<div class="mcVal">' + Math.round(used) + '</div>'
+        + '<div class="mcSub">of ' + target + unit + '</div>'
+        + '<div class="mcBar"><div class="mcFill" style="width:' + pct + '%;background:' + color + '"></div></div></div>';
+    }
+    function macroGridHTML(t, targets) {
+      return '<div class="macroGrid">'
+        + macroCell(MACRO_ICON_CAL, 'Calories', t.kcal, targets.kcal, ' kcal')
+        + macroCell(MACRO_ICON_PROTEIN, 'Protein', t.protein, targets.protein, ' g')
+        + macroCell(MACRO_ICON_FAT, 'Fat', t.fat, targets.fat, ' g')
+        + macroCell(MACRO_ICON_CARBS, 'Carbs', t.carbs, targets.carbs, ' g')
+        + '</div>';
+    }
+
+    // ---------------------------------------------------------------------
+    // Storage helpers. Added 2026-08-26 after a debug sweep found two ways the
+    // app could lose everything without ever saying so.
+    //
+    // WRITING: not one of the 19 localStorage.setItem calls in this file was
+    // wrapped in a try/catch. Every saved meal is forced to carry a base64
+    // photo (55-120 KB each), and Safari caps one site at about 5 MB -- so
+    // somewhere around 40-80 meals, setItem starts throwing QuotaExceededError.
+    // The in-memory array had already been updated, so the meal appeared on
+    // screen and looked saved; the page's global error handler dumped the
+    // failure into a status line that fades after three seconds. Close the app
+    // and the day was gone -- and from then on NOTHING saved, food or workouts,
+    // because every write goes through the same full store. A silent failure on
+    // the only copy of his data is the worst thing this app can do, so a failed
+    // write now says so loudly and unmissably.
+    function store(key, value) {
+      try {
+        localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+        return true;
+      } catch (e) {
+        const full = String(e && e.name || e).indexOf('Quota') !== -1 ||
+                     String(e && e.name || e).indexOf('QUOTA') !== -1;
+        const msg = full
+          ? 'STORAGE FULL — this did NOT save.\n\nBack up your data (Settings → Backup → Copy), ' +
+            'then delete some saved meals to free space. Until you do, nothing new will be kept.'
+          : 'This did NOT save (' + (e && e.message ? e.message : e) + ').\n\nBack up your data before closing the app.';
+        try { alert(msg); } catch (_) {}
+        // Callers set their own "Saved X" line straight after calling this, so
+        // writing the warning now would just get overwritten a moment later --
+        // leaving the screen cheerfully claiming a save that didn't happen.
+        // Setting it on the next tick means the last word belongs to the truth.
+        setTimeout(function () {
+          const s = document.getElementById('status');
+          if (s) s.textContent = full ? 'STORAGE FULL — that did NOT save' : 'Save failed — back up now';
+        }, 0);
+        return false;
+      }
+    }
+
+    // READING: eight JSON.parse calls sit at the top level of this one script.
+    // A throw there aborts the whole script, so every addEventListener defined
+    // below it never gets attached -- the page loads, and nothing works at all,
+    // including the Restore button, which lives in the same script. The bad
+    // text is kept under a side key rather than thrown away, so it can still
+    // be picked apart by hand.
+    function loadJSON(key, fallback) {
+      const raw = localStorage.getItem(key);
+      if (raw === null) return fallback;
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed === null || parsed === undefined ? fallback : parsed;
+      } catch (e) {
+        try { localStorage.setItem(key + '.corrupt.' + Date.now(), raw); } catch (_) {}
+        return fallback;
+      }
+    }
+
+    let targets = loadJSON('targets', null) || { kcal: 2821, protein: 150, fat: 78, carbs: 380 };
+    let log = loadJSON('log', {});
+    let meals = loadJSON('meals', []);
+    let pending = null;
+    let editingIndex = null;
+    let warned = false;
+    let savedOpen = true;
+    let savedQuery = '';
+let qty = 1;
+    // The photo just taken with the camera input, held here so whichever saved-meal path it
+    // ends up on (AI estimate or a barcode match) can reuse it as that meal's reference photo
+    // instead of asking for a second photo. Reset whenever a fresh, photo-less entry path starts.
+    let lastPhotoTaken = null;
+    // The photo attached to whatever is currently in the Save-meal editor. Every NEW saved meal
+    // requires one (that is how the app can recognise the food from a photo later); editing an
+    // existing meal keeps whatever photo it already had unless you retake it.
+    let savePhoto = null;
+    showSaved();
+    showToday();
+
+    // Names typed by a person get built straight into HTML strings all over this
+    // file. Left raw, a name with a "<" in it starts what the browser reads as a
+    // tag and eats the rest of that row — verified 2026-08-26: a routine called
+    // 'Legs <div style="display:none">' rendered with no exercise count and no
+    // edit or delete buttons at all, so the routine could not be reached from the
+    // screen again. This is not about attackers; it's Owen's own text breaking
+    // his own page. One helper, used at every spot a name goes into innerHTML.
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function showSaved() {
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center">' +
+    '<b>Saved meals (' + meals.length + ')</b>' +
+    '<button id="savedToggle" class="grey">' + (savedOpen ? 'Hide' : 'Show') + '</button></div>';
+  if (savedOpen) {
+    if (meals.length > 5) {
+      html += '<input id="savedSearch" type="text" placeholder="Search saved meals" value="' + savedQuery.replace(/"/g, '&quot;') + '">';
+    }
+    const filtered = meals.filter(function (m) { return m.name.toLowerCase().indexOf(savedQuery.toLowerCase()) !== -1; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    html += filtered.map(function (m) {
+      const i = meals.indexOf(m);
+      return '<div class="row"><span class="quick" data-i="' + i + '">' + esc(m.name) + '</span><span>' + Math.round(m.kcal) +
+        ' kcal <button class="editmeal" data-i="' + i + '">✎</button><button class="delmeal" data-i="' + i + '">×</button></span></div>';
+    }).join('');
+    if (meals.length && !filtered.length) html += '<div class="sub">No matches</div>';
+  }
+  savedEl.innerHTML = html;
+  const s = document.getElementById('savedSearch');
+  if (s) {
+    s.focus();
+    s.setSelectionRange(s.value.length, s.value.length);
+  }
+}
+
+    photo.addEventListener('change', async function () {
+      const file = photo.files[0];
+      if (!file) return;
+      preview.src = URL.createObjectURL(file);
+      editor.style.display = 'none';
+      portion.style.display = 'none';
+      statusEl.textContent = 'Checking for a barcode...';
+      const code = await readBarcode(preview.src);
+      // Shrink once here regardless of which path this turns into, so whether it ends up a
+      // barcode match or an AI estimate, the food has a reference photo ready to attach.
+      statusEl.textContent = 'Saving the photo...';
+      lastPhotoTaken = await shrink(file);
+      if (code) {
+        debugEl.textContent = 'Barcode: ' + code;
+        lookup(code);
+        return;
+      }
+      statusEl.textContent = 'Thinking...';
+      debugEl.textContent = lastPhotoTaken.length + ' chars';
+      await askGemini([{ inline_data: { mime_type: 'image/jpeg', data: lastPhotoTaken } }]);
+    });
+
+    const addBtn = document.getElementById('addBtn');
+    const addMenu = document.getElementById('addMenu');
+    const addCancel = document.getElementById('addCancel');
+    addBtn.addEventListener('click', function () {
+      document.querySelectorAll('.entryMethod').forEach(function (el) { el.style.display = 'none'; });
+      addMenu.style.display = 'block';
+      lastPhotoTaken = null;
+    });
+    addCancel.addEventListener('click', function () {
+      addMenu.style.display = 'none';
+    });
+    document.querySelectorAll('.addOption').forEach(function (b) {
+      b.addEventListener('click', function () {
+        addMenu.style.display = 'none';
+        if (b.dataset.mode === 'manual') {
+          manualBtn.click();
+          return;
+        }
+        const cardIds = { photo: 'photoCard', bc: 'bcCard', search: 'searchCard', dine: 'dineCard', desc: 'descCard' };
+        document.getElementById(cardIds[b.dataset.mode] || 'descCard').style.display = 'block';
+      });
+    });
+
+    async function callGemini(parts, instructions, schema) {
+      const key = await ensureApiKey();
+      if (!key) { statusEl.textContent = 'Add a Gemini API key to use AI food recognition — try again to enter one.'; return null; }
+      const r = await safeFetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: instructions }].concat(parts) }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseSchema: schema
+          }
+        })
+      });
+if (!r) return null;
+      const data = await r.json();
+      if (data.error && data.error.code === 503 && !parts.retried) {
+        statusEl.textContent = 'Google is busy — retrying...';
+        await new Promise(function (res) { setTimeout(res, 2000); });
+        parts.retried = true;
+        return callGemini(parts, instructions, schema);
+      }
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+if (data.error && /API key/i.test(data.error.message || '')) {
+    localStorage.removeItem('geminiKey');
+    statusEl.textContent = 'Your API key looks wrong — reload the page to enter a new one';
+    return null;
+  }
+      if (!text) {
+        if (data.error) {
+          statusEl.textContent = data.error.code === 503
+            ? 'Google is busy right now — try again in a few seconds'
+            : 'Gemini error ' + data.error.code + ': ' + data.error.message;
+        } else {
+          statusEl.textContent = JSON.stringify(data).slice(0, 1000);
+        }
+        return null;
+      }
+      debugEl.textContent = text;
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        statusEl.textContent = 'Gemini sent something I could not read — try again';
+        return null;
+      }
+    }
+
+    const foodSchema = {
+      type: 'OBJECT',
+      properties: {
+        match: { type: 'STRING' },
+        name: { type: 'STRING' },
+        kcal: { type: 'NUMBER' },
+        protein: { type: 'NUMBER' },
+        fat: { type: 'NUMBER' },
+        carbs: { type: 'NUMBER' }
+      },
+      required: ['match', 'name', 'kcal', 'protein', 'fat', 'carbs']
+    };
+
+    async function askGemini(parts) {
+      const hasPhoto = parts.some(function (p) { return p.inline_data; });
+      const names = meals.map(function (m) { return m.name; }).join(', ');
+      // When the new entry is itself a photo, also send Gemini the reference photos already
+      // stored on saved meals (every meal saved from here on requires one). That lets it compare
+      // the new photo against what those meals actually look like instead of guessing purely from
+      // a generic food name — the fix for homemade/recipe dishes it has never seen before.
+      let refParts = [];
+      if (hasPhoto) {
+        meals.filter(function (m) { return m.photo; }).forEach(function (m) {
+          refParts.push({ text: 'Reference photo of a saved meal called "' + m.name + '":' });
+          refParts.push({ inline_data: { mime_type: 'image/jpeg', data: m.photo } });
+        });
+      }
+      const instructions = 'Identify the food described or shown in the LAST photo or description below.' +
+        (refParts.length ? ' Some saved meals have reference photos shown first — compare the last photo against those first, since a visual match beats a guess.' : '') +
+        ' Meals the user has already saved: ' + (names || 'none') + '. If it is clearly one of those saved meals, put that exact saved name in "match" and 0 in every number field. Otherwise leave "match" empty, fill in a short name, and estimate kcal plus protein, fat and carbs in grams.';
+      const food = await callGemini(refParts.concat(parts), instructions, foodSchema);
+      if (!food) return;
+      if (food.match) {
+        const hit = meals.find(function (m) { return m.name === food.match; });
+        if (hit) {
+          showFood(hit, 'saved');
+          return;
+        }
+      }
+      if (hasPhoto && lastPhotoTaken) food.photo = lastPhotoTaken;
+      showFood(food, 'estimate');
+    }
+
+    function shrink(file, max) {
+      return new Promise(function (resolve) {
+        const img = new Image();
+        img.onload = function () {
+          const scale = Math.min(1, (max || 800) / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
+        };
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    function saveMeals() {
+      store('meals', meals);
+    }
+
+    window.addEventListener('error', function (e) {
+      statusEl.textContent = 'Error: ' + e.message;
+    });
+
+    window.addEventListener('unhandledrejection', function (e) {
+      statusEl.textContent = 'Error: ' + e.reason;
+    });
+
+    async function readBarcode(src) {
+      if (typeof ZXing === 'undefined') return '';
+      try {
+        const reader = new ZXing.BrowserMultiFormatReader();
+        const result = await reader.decodeFromImageUrl(src);
+        return result.getText();
+      } catch (e) {
+        return '';
+      }
+    }
+
+    async function lookup(code) {
+      per100Kind = 'barcode';
+      statusEl.textContent = 'Looking up ' + code + '...';
+      const url = 'https://world.openfoodfacts.org/api/v2/product/' + code +
+        '.json?fields=product_name,brands,nutriments,serving_size,serving_quantity,nutrition_data_per';
+      const r = await safeFetch(url);
+  if (!r) return;
+  const data = await r.json();
+      debugEl.textContent = JSON.stringify(data).slice(0, 600);
+      if (!data.product) {
+        statusEl.textContent = 'Not in Open Food Facts — type the numbers in yourself';
+        return;
+      }
+      const p = data.product;
+      const n = p.nutriments || {};
+      per100 = {
+        name: (p.brands ? p.brands + ' ' : '') + (p.product_name || 'Unnamed'),
+        kcal: n['energy-kcal_100g'] || 0,
+        protein: n.proteins_100g || 0,
+        fat: n.fat_100g || 0,
+        carbs: n.carbohydrates_100g || 0
+      };
+      portionName.textContent = per100.name + ' — ' + Math.round(per100.kcal) + ' kcal per 100g';
+      grams.value = p.serving_quantity || 100;
+      portion.style.display = 'block';
+      statusEl.textContent = 'How much did you have?';
+    }
+
+    usePortion.addEventListener('click', function () {
+      if (!per100) return;
+      const g = Number(grams.value);
+      if (!g) {
+        statusEl.textContent = 'Enter an amount in grams';
+        return;
+      }
+      const f = {
+        name: per100.name + ' (' + g + 'g)',
+        kcal: Math.round(per100.kcal * g / 100),
+        protein: Math.round(per100.protein * g / 100),
+        fat: Math.round(per100.fat * g / 100),
+        carbs: Math.round(per100.carbs * g / 100)
+      };
+      if (lastPhotoTaken) f.photo = lastPhotoTaken;
+      portion.style.display = 'none';
+      showFood(f, per100Kind);
+    });
+
+    lookupBtn.addEventListener('click', async function () {
+  if (!bc.value) return;
+  lastPhotoTaken = null; // typed barcode, not photographed — this save will need its own photo
+  lookupBtn.disabled = true;
+  await lookup(bc.value.trim());
+  lookupBtn.disabled = false;
+});
+
+    // --- Food search (USDA FoodData Central) ---
+    // Fills the exact same per100/portion UI the barcode path already uses — pick a result,
+    // type how many grams, tap "Use this amount". The only new pieces are the search call
+    // itself and turning USDA's response shape into the same {name, kcal, protein, fat, carbs}
+    // per-100g shape lookup() already builds from Open Food Facts.
+    // USDA was picked over Open Food Facts' own name search after actually testing both live:
+    // OFF's real full-text search (search.openfoodfacts.org) sends no CORS header at all — it
+    // answers fine to a plain server request but a real browser is blocked from reading the
+    // response — and their older endpoint that did allow CORS (cgi/search.pl) is currently
+    // returning a permanent "temporarily unavailable" page, not a rate limit, so it's actually
+    // down. USDA's search API has both open CORS and real relevance-ranked results — confirmed
+    // with a live request before any of this was written, not assumed.
+    const foodSearch = document.getElementById('foodSearch');
+    const foodSearchBtn = document.getElementById('foodSearchBtn');
+    const foodSearchResults = document.getElementById('foodSearchResults');
+
+    async function ensureUsdaKey() {
+      let key = localStorage.getItem('usdaKey');
+      if (key) return key;
+      key = await askForText('Food search key (optional)', 'A free key from api.data.gov/signup raises the search limit from 10 lookups/hour to 1,000/hour. Skip this to use a shared, more limited key instead — search still works either way.', 'Paste your USDA API key');
+      if (key) store('usdaKey', key);
+      return key || 'DEMO_KEY';
+    }
+
+    function nutrientValue(foodNutrients, id) {
+      const hit = foodNutrients.find(function (n) { return n.nutrientId === id; });
+      return hit ? hit.value : 0;
+    }
+
+    // USDA's search results report nutrients per 100g regardless of the food's data type
+    // (Branded, Foundation, SR Legacy) — the same convention Open Food Facts uses, which is
+    // why this can feed straight into the existing per100/grams/usePortion flow unchanged.
+    // Nutrient ids are fixed by USDA (1008 Energy, 1003 Protein, 1004 Fat, 1005 Carbohydrate) —
+    // looked up by id rather than by name since names vary slightly between data types.
+    function parseUsdaFood(food) {
+      const fn = food.foodNutrients || [];
+      const brand = food.brandOwner || food.brandName;
+      return {
+        name: (brand ? brand + ' ' : '') + food.description,
+        kcal: nutrientValue(fn, 1008),
+        protein: nutrientValue(fn, 1003),
+        fat: nutrientValue(fn, 1004),
+        carbs: nutrientValue(fn, 1005),
+        grams: (food.servingSizeUnit === 'g' && food.servingSize) ? food.servingSize : 100
+      };
+    }
+
+    foodSearchBtn.addEventListener('click', async function () {
+      const term = foodSearch.value.trim();
+      if (!term) return;
+      lastPhotoTaken = null; // typed, not photographed — this save will need its own photo
+      foodSearchBtn.disabled = true;
+      foodSearchResults.innerHTML = '';
+      statusEl.textContent = 'Searching for "' + term + '"...';
+      const key = await ensureUsdaKey();
+      const url = 'https://api.nal.usda.gov/fdc/v1/foods/search?query=' + encodeURIComponent(term) +
+        '&pageSize=8&api_key=' + encodeURIComponent(key);
+      const r = await safeFetch(url);
+      foodSearchBtn.disabled = false;
+      if (!r) return;
+      if (r.status === 403 || r.status === 429) {
+        statusEl.textContent = 'Search key rejected or rate-limited — try again shortly, or add your own free key at api.data.gov/signup';
+        return;
+      }
+      const data = await r.json();
+      const foods = (data.foods || []).map(parseUsdaFood).filter(function (f) { return f.kcal || f.protein || f.fat || f.carbs; });
+      if (!foods.length) {
+        foodSearchResults.innerHTML = '<div class="sub">No matches — try a simpler search term.</div>';
+        statusEl.textContent = 'No matches';
+        return;
+      }
+      foodSearchResults._foods = foods;
+      foodSearchResults.innerHTML = foods.map(function (f, i) {
+        return '<div class="row"><span class="quick" data-i="' + i + '">' + f.name + '</span><span>' +
+          Math.round(f.kcal) + ' kcal/100g</span></div>';
+      }).join('');
+      statusEl.textContent = foods.length + ' matches — tap one';
+    });
+
+    foodSearchResults.addEventListener('click', function (ev) {
+      if (!ev.target.classList.contains('quick')) return;
+      const f = foodSearchResults._foods[Number(ev.target.dataset.i)];
+      per100Kind = 'food search';
+      per100 = { name: f.name, kcal: f.kcal, protein: f.protein, fat: f.fat, carbs: f.carbs };
+      portionName.textContent = per100.name + ' — ' + Math.round(per100.kcal) + ' kcal per 100g';
+      grams.value = f.grams;
+      document.getElementById('searchCard').style.display = 'none';
+      portion.style.display = 'block';
+      statusEl.textContent = 'How much did you have?';
+    });
+
+    // --- UIUC dining hall lookup ---
+    // Same idea as the barcode/restaurant paths: real published numbers instead of an AI guess.
+    // The chain is Hall -> Station -> Date+Meal -> Item, matching how the food is actually laid
+    // out in the dining hall itself. Each step calls the dining-proxy Netlify Function, which
+    // replays every pick made so far inside one real background browser (see that file for why a
+    // real browser is needed at all, and why the whole path is replayed on every call — short
+    // version: UIUC's site blocks plain server requests, and its deeper steps need a session that
+    // actually walked through the earlier ones first). Full API shape and the discovery process
+    // are recorded in Calorie App notes.md, 2026-08-22.
+    const dineHall = document.getElementById('dineHall');
+    const dineStation = document.getElementById('dineStation');
+    const dineMeal = document.getElementById('dineMeal');
+    const dineItem = document.getElementById('dineItem');
+    const dineNote = document.getElementById('dineNote');
+    const DINE_ERR = 'Could not reach the dining hall site — try again, or type the numbers in yourself.';
+    // The steps picked so far this lookup, replayed in full on every call (see dining-proxy.js).
+    let dinePath = [];
+
+    async function dineProxySteps(steps) {
+      const r = await safeFetch('/.netlify/functions/dining-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ steps: steps })
+      });
+      if (!r) throw new Error('offline');
+      const outer = await r.json();
+      if (!outer.ok) throw new Error(outer.error || 'bad response');
+      return outer.text;
+    }
+
+    function dinePanelHtml(panelsJsonText, id) {
+      const nn = JSON.parse(panelsJsonText);
+      const p = (nn.panels || []).find(function (x) { return x.id === id; });
+      return p ? p.html : '';
+    }
+
+    // Generic "find every link that calls this JS function, pull its name and its numeric id out
+    // of the onclick attribute" — used for the hall->station step, which is a plain list.
+    function dineParseLinks(html, fnName) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const links = Array.from(doc.querySelectorAll('a[onclick*="' + fnName + '"]'));
+      return links.map(function (a) {
+        const m = (a.getAttribute('onclick') || '').match(new RegExp(fnName + '\\((\\d+)\\)'));
+        return { name: a.textContent.trim(), oid: m ? m[1] : null };
+      }).filter(function (x) { return x.oid; });
+    }
+
+    // The station->menu step groups meals under date headers, so this walks each date's card and
+    // labels every meal link it finds with that date.
+    function dineParseMenus(html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const out = [];
+      doc.querySelectorAll('section.card').forEach(function (sec) {
+        const header = sec.querySelector('header');
+        const date = header ? header.textContent.trim() : '';
+        sec.querySelectorAll('a.cbo_nn_menuLink').forEach(function (a) {
+          const m = (a.getAttribute('onclick') || '').match(/menuListSelectMenu\((\d+)\)/);
+          if (m) out.push({ label: date + ' — ' + a.textContent.trim(), oid: m[1] });
+        });
+      });
+      return out;
+    }
+
+    // The menu->item step groups items under category rows (Appetizers & Sides, Breads, etc).
+    // Category rows and item rows are both plain <tr>s in one long list, so this walks them in
+    // order and remembers whichever category heading it passed most recently.
+    function dineParseItems(html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const out = [];
+      let category = '';
+      doc.querySelectorAll('tr').forEach(function (tr) {
+        if (tr.classList.contains('cbo_nn_itemGroupRow')) {
+          const div = tr.querySelector('div[role="button"]');
+          category = div ? div.textContent.trim() : '';
+          return;
+        }
+        if (!tr.classList.contains('cbo_nn_itemPrimaryRow')) return;
+        const a = tr.querySelector('a.cbo_nn_itemHover');
+        if (!a) return;
+        const m = (a.getAttribute('onclick') || '').match(/getItemNutritionLabelOnClick\(event,(\d+)\)/);
+        if (!m) return;
+        // The item's name is the link's own first text node — the little allergen icons after it
+        // are separate <span> children, so reading just childNodes[0] leaves those out.
+        const nameNode = a.childNodes[0];
+        out.push({ category: category, name: nameNode ? nameNode.textContent.trim() : a.textContent.trim(), oid: m[1] });
+      });
+      return out;
+    }
+
+    // Pulls the numbers off the actual nutrition label. Reads from the whole label's text rather
+    // than fussing over exact markup, since "Calories from Fat" always has a word right after
+    // "Calories" while the real Calories line has a number — same trick for the other three.
+    function dineParseNutrition(html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const text = doc.body.textContent || '';
+      const headerEl = doc.querySelector('.cbo_nn_LabelHeader');
+      const servingEl = doc.querySelector('.cbo_nn_LabelBottomBorderLabel');
+      const kcalMatch = text.match(/Calories\s+(\d[\d,]*)/);
+      const fatMatch = text.match(/Total Fat\s+([\d.]+)\s*g/i);
+      const carbMatch = text.match(/Total Carbohydrate\s+([\d.]+)\s*g/i);
+      const proteinMatch = text.match(/Protein\s+([\d.]+)\s*g/i);
+      return {
+        name: headerEl ? headerEl.textContent.trim() : 'Dining hall item',
+        servingSize: servingEl ? servingEl.textContent.replace(/^Serving Size:\s*/, '').trim() : '',
+        kcal: kcalMatch ? Number(kcalMatch[1].replace(/,/g, '')) : 0,
+        fat: fatMatch ? Number(fatMatch[1]) : 0,
+        carbs: carbMatch ? Number(carbMatch[1]) : 0,
+        protein: proteinMatch ? Number(proteinMatch[1]) : 0
+      };
+    }
+
+    dineHall.addEventListener('change', async function () {
+      [dineStation, dineMeal, dineItem].forEach(function (s) { s.style.display = 'none'; s.innerHTML = ''; });
+      dineNote.textContent = '';
+      if (!dineHall.value) { dinePath = []; return; }
+      dinePath = [{ path: 'Unit/SelectUnitFromUnitsList', params: { unitOid: dineHall.value } }];
+      dineNote.textContent = 'Loading stations... (this checks a real background browser, give it a few seconds)';
+      try {
+        const text = await dineProxySteps(dinePath);
+        const stations = dineParseLinks(dinePanelHtml(text, 'childUnitsPanel'), 'childUnitsSelectUnit');
+        if (!stations.length) { dineNote.textContent = 'No stations found — try again or type the numbers in yourself.'; return; }
+        dineStation.innerHTML = '<option value="">Pick a station</option>' + stations.map(function (s) {
+          return '<option value="' + s.oid + '">' + s.name.replace(/</g, '&lt;') + '</option>';
+        }).join('');
+        dineStation.style.display = 'block';
+        dineNote.textContent = '';
+      } catch (e) {
+        dineNote.textContent = DINE_ERR;
+      }
+    });
+
+    dineStation.addEventListener('change', async function () {
+      [dineMeal, dineItem].forEach(function (s) { s.style.display = 'none'; s.innerHTML = ''; });
+      dineNote.textContent = '';
+      if (!dineStation.value) return;
+      dinePath = dinePath.slice(0, 1).concat([{ path: 'Unit/SelectUnitFromChildUnitsList', params: { unitOid: dineStation.value } }]);
+      dineNote.textContent = 'Loading dates...';
+      try {
+        const text = await dineProxySteps(dinePath);
+        const menus = dineParseMenus(dinePanelHtml(text, 'menuPanel'));
+        if (!menus.length) { dineNote.textContent = 'No menu found for this station right now.'; return; }
+        dineMeal.innerHTML = '<option value="">Pick a date and meal</option>' + menus.map(function (m) {
+          return '<option value="' + m.oid + '">' + m.label.replace(/</g, '&lt;') + '</option>';
+        }).join('');
+        dineMeal.style.display = 'block';
+        dineNote.textContent = '';
+      } catch (e) {
+        dineNote.textContent = DINE_ERR;
+      }
+    });
+
+    dineMeal.addEventListener('change', async function () {
+      dineItem.style.display = 'none';
+      dineItem.innerHTML = '';
+      dineNote.textContent = '';
+      if (!dineMeal.value) return;
+      dinePath = dinePath.slice(0, 2).concat([{ path: 'Menu/SelectMenu', params: { menuOid: dineMeal.value } }]);
+      dineNote.textContent = 'Loading items...';
+      try {
+        const text = await dineProxySteps(dinePath);
+        const items = dineParseItems(dinePanelHtml(text, 'itemPanel'));
+        if (!items.length) { dineNote.textContent = 'No items found for that meal.'; return; }
+        let lastCat = null, html = '<option value="">Pick an item</option>';
+        items.forEach(function (it) {
+          if (it.category !== lastCat) {
+            if (lastCat !== null) html += '</optgroup>';
+            html += '<optgroup label="' + it.category.replace(/</g, '&lt;') + '">';
+            lastCat = it.category;
+          }
+          html += '<option value="' + it.oid + '">' + it.name.replace(/</g, '&lt;') + '</option>';
+        });
+        if (lastCat !== null) html += '</optgroup>';
+        dineItem.innerHTML = html;
+        dineItem.style.display = 'block';
+        dineNote.textContent = '';
+      } catch (e) {
+        dineNote.textContent = DINE_ERR;
+      }
+    });
+
+    dineItem.addEventListener('change', async function () {
+      if (!dineItem.value) return;
+      dinePath = dinePath.slice(0, 3).concat([{ path: 'NutritionDetail/ShowItemNutritionLabel', params: { detailOid: dineItem.value } }]);
+      dineNote.textContent = 'Loading nutrition...';
+      try {
+        // This last step returns the label as plain HTML, not the {success, panels} JSON the
+        // other three use — NetNutrition's own JS just drops it straight into a div, so this
+        // reads it the same way instead of trying to JSON-parse it.
+        const html = await dineProxySteps(dinePath);
+        const n = dineParseNutrition(html);
+        if (!n.kcal && !n.protein && !n.fat && !n.carbs) {
+          dineNote.textContent = 'Could not read the nutrition label for that item — type the numbers in yourself.';
+          return;
+        }
+        lastPhotoTaken = null; // no camera photo on this path — saving it new will still ask for one
+        const stationName = dineStation.options[dineStation.selectedIndex].textContent;
+        const f = {
+          name: n.name + (n.servingSize ? ' (' + n.servingSize + ')' : '') + ' — ' + stationName,
+          kcal: n.kcal, protein: n.protein, fat: n.fat, carbs: n.carbs
+        };
+        dineNote.textContent = '';
+        showFood(f, 'dining hall');
+      } catch (e) {
+        dineNote.textContent = DINE_ERR;
+      }
+    });
+
+    function macroCheck(f) {
+      if (!f.kcal) return '';
+      const fromMacros = f.protein * 4 + f.carbs * 4 + f.fat * 9;
+      const off = Math.abs(fromMacros - f.kcal) / f.kcal;
+      if (off < 0.2) return '';
+      return ' ⚠ macros work out to ' + Math.round(fromMacros) + ' kcal, not ' + Math.round(f.kcal);
+    }
+
+    function showFood(f, kind) {
+      pending = f;
+      qty = 1;
+      syncQty();
+      statusEl.textContent = f.name + ': ' + f.kcal + ' kcal, ' + f.protein + 'p ' + f.fat + 'f ' + f.carbs + 'c (' + kind + ')' + macroCheck(f);
+      saveBtn.style.display = (kind === 'saved') ? 'none' : 'inline-block';
+      logBtns.style.display = 'block';
+    }
+
+    saveBtn.addEventListener('click', function () {
+      if (!pending) return;
+      fName.value = pending.name;
+      fKcal.value = pending.kcal;
+      fProtein.value = pending.protein;
+      fFat.value = pending.fat;
+      fCarbs.value = pending.carbs;
+      editor.style.display = 'block';
+      warned = false;
+      saveBtn.style.display = 'none';
+      // If this food came from a photo you just took (an AI estimate or a barcode scan), reuse
+      // that same photo as the meal's reference photo instead of asking you to take a second one.
+      setSavePhoto(pending.photo || null);
+    });
+
+    cancelSave.addEventListener('click', function () {
+      editingIndex = null;
+      editor.style.display = 'none';
+      setSavePhoto(null);
+      saveBtn.style.display = pending ? 'inline-block' : 'none';
+    });
+
+    confirmSave.addEventListener('click', function () {
+      if (!fName.value) {
+        statusEl.textContent = 'Give it a name first';
+        return;
+      }
+if ([fKcal.value, fProtein.value, fFat.value, fCarbs.value].some(function (v) { return v === '' || isNaN(Number(v)); })) {
+    statusEl.textContent = 'Fill in all four numbers before saving';
+    return;
+  }
+  if (editingIndex === null && !savePhoto) {
+    statusEl.textContent = 'Take a photo of the food before saving — that is how the app recognises it next time';
+    return;
+  }
+      const meal = {
+        name: fName.value,
+        kcal: Number(fKcal.value),
+        protein: Number(fProtein.value),
+        fat: Number(fFat.value),
+        carbs: Number(fCarbs.value),
+        photo: savePhoto
+      };
+      const warn = macroCheck(meal);
+      if (warn && !warned) {
+        warned = true;
+        statusEl.textContent = 'Hold on —' + warn + '. Tap Save meal again if that is right.';
+        return;
+      }
+      warned = false;
+      if (editingIndex !== null) {
+        meals[editingIndex] = meal;
+        editingIndex = null;
+        saveMeals();
+        showSaved();
+        editor.style.display = 'none';
+        setSavePhoto(null);
+        statusEl.textContent = 'Updated ' + meal.name;
+      } else {
+        meals.push(meal);
+        saveMeals();
+        showSaved();
+        editor.style.display = 'none';
+        setSavePhoto(null);
+        showFood(meal, 'saved');
+        statusEl.textContent = 'Saved ' + meal.name + ' — now pick a meal';
+      }
+    });
+
+    todayEl.addEventListener('click', function (ev) {
+      if (!ev.target.classList.contains('del')) return;
+      const key = todayKey();
+      const removed = log[key][Number(ev.target.dataset.i)];
+      log[key].splice(Number(ev.target.dataset.i), 1);
+      store('log', log);
+      showToday();
+      showUndo('Deleted ' + removed.name, function () {
+        log[key].push(removed);
+        store('log', log);
+        showToday();
+      });
+    });
+
+    savedEl.addEventListener('click', function (ev) {
+if (ev.target.id === 'savedToggle') {
+    savedOpen = !savedOpen;
+    showSaved();
+    return;
+  }
+      if (ev.target.classList.contains('delmeal')) {
+        const removed = meals[Number(ev.target.dataset.i)];
+        meals.splice(Number(ev.target.dataset.i), 1);
+        saveMeals();
+        showSaved();
+        showUndo('Deleted ' + removed.name, function () {
+          meals.push(removed);
+          saveMeals();
+          showSaved();
+        });
+        return;
+      }
+      if (ev.target.classList.contains('quick')) {
+        editor.style.display = 'none';
+        portion.style.display = 'none';
+        showFood(meals[Number(ev.target.dataset.i)], 'saved');
+      }
+      if (ev.target.classList.contains('editmeal')) {
+        editingIndex = Number(ev.target.dataset.i);
+        const m = meals[editingIndex];
+        fName.value = m.name;
+        fKcal.value = m.kcal;
+        fProtein.value = m.protein;
+        fFat.value = m.fat;
+        fCarbs.value = m.carbs;
+        saveBtn.style.display = 'none';
+        logBtns.style.display = 'none';
+        editor.style.display = 'block';
+        warned = false;
+        // Keeps whatever photo the meal already has (older meals may have none — editing one
+        // doesn't force you to add a photo just to fix a number, but you can retake it here).
+        setSavePhoto(m.photo || null);
+        statusEl.textContent = 'Editing ' + m.name;
+      }
+    });
+savedEl.addEventListener('input', function (ev) {
+  if (ev.target.id !== 'savedSearch') return;
+  savedQuery = ev.target.value;
+  showSaved();
+});
+    function todayKey() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function logFood(f, meal) {
+      const key = todayKey();
+      if (!log[key]) log[key] = [];
+      log[key].push({ name: f.name, meal: meal, kcal: f.kcal, protein: f.protein, fat: f.fat, carbs: f.carbs });
+      store('log', log);
+      showToday();
+    }
+
+    function showToday() {
+      const entries = log[todayKey()] || [];
+      const t = dayTotal(todayKey());
+      let list = '';
+      ['Breakfast', 'Lunch', 'Dinner', 'Snack'].forEach(function (m) {
+        let rows = '';
+        entries.forEach(function (e, i) {
+          if ((e.meal || 'Snack') !== m) return;
+          rows += '<div class="row"><span>' + esc(e.name) + '</span><span>' + Math.round(e.kcal) +
+            ' kcal <button class="del" data-i="' + i + '">×</button></span></div>';
+        });
+        if (!rows) return;
+        list += '<div class="mealhead">' + (MEAL_ICONS[m] || '') + '<span>' + m + '</span></div>' + rows;
+      });
+      if (!entries.length) list = emptyStateHTML('Nothing logged yet today — tap + to add something.');
+      // Logging streak, same flame icon as the workout side (session 23) — a plain habit
+      // counter, no rest-day grace here since food gets logged every day, unlike workouts.
+      // computeFoodStreak() is defined further down the file but as a hoisted function
+      // declaration it's safe to call here on first page load regardless of source order —
+      // STREAK_ICON_ACTIVE/INACTIVE had to actually move up near the other icon constants for
+      // that same reason, since a `const` doesn't hoist the same way.
+      const fstreak = computeFoodStreak();
+      const streakLine = '<div style="display:flex;align-items:center;margin-bottom:10px">' +
+        '<span style="display:inline-flex;width:20px;height:20px;margin-right:6px;flex:none">' +
+        (fstreak.count ? STREAK_ICON_ACTIVE : STREAK_ICON_INACTIVE) + '</span>' +
+        '<span class="sub" style="padding:0">' + (fstreak.count ? fstreak.count + '-day logging streak' : 'Log today to start a streak') + '</span></div>';
+      todayEl.innerHTML = streakLine + '<b>Today — ' + entries.length + ' meals</b><br><br>' +
+        macroGridHTML(t, targets) +
+        '<br>' + list;
+    }
+
+    document.querySelectorAll('.meal').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (!pending) return;
+        const f = scale(pending, qty);
+        logFood(f, b.textContent);
+        statusEl.textContent = 'Logged ' + f.name + ' to ' + b.textContent;
+        logBtns.style.display = 'none';
+        saveBtn.style.display = 'none';
+        pending = null;
+        qty = 1;
+      });
+    });
+
+    function scale(f, q) {
+      if (q === 1) return f;
+      return {
+        name: f.name + ' (' + q + 'x)',
+        kcal: f.kcal * q,
+        protein: f.protein * q,
+        fat: f.fat * q,
+        carbs: f.carbs * q
+      };
+    }
+
+    // Quantity is now free-form instead of the old capped 0.5x/1x/1.5x/2x buttons. qty is a plain
+    // multiplier on whatever "pending" holds (one cookie, one recipe serving, etc.) — the +/- buttons
+    // step by 1 for quick taps, and the box itself takes any typed number for fractional amounts.
+    const qtyInput = document.getElementById('qtyInput');
+    const qtyMinus = document.getElementById('qtyMinus');
+    const qtyPlus = document.getElementById('qtyPlus');
+
+    function syncQty() {
+      qtyInput.value = qty;
+    }
+
+    function announceQty() {
+      if (pending) {
+        statusEl.textContent = pending.name + ' × ' + qty + ' = ' + Math.round(pending.kcal * qty) + ' kcal';
+      }
+    }
+
+    function setQty(q) {
+      qty = Math.max(0.25, q);
+      syncQty();
+      announceQty();
+    }
+
+    qtyMinus.addEventListener('click', function () { setQty(qty - 1); });
+    qtyPlus.addEventListener('click', function () { setQty(qty + 1); });
+    qtyInput.addEventListener('input', function () {
+      const v = Number(qtyInput.value);
+      if (!v || v <= 0) return;
+      qty = v;
+      announceQty();
+    });
+
+    // --- Restaurant food lookup ---
+    // Two-step: try Nutritionix's verified restaurant/chain database first (real published numbers,
+    // not a guess). If that comes back empty, fails, or the browser can't reach it at all (Nutritionix's
+    // own docs say their key isn't meant to be called straight from browser code — this app has no
+    // server to hide it behind, same tradeoff already made for the Gemini key), fall back to asking
+    // Gemini to search the web itself. Gemini's search tool can't be combined with the strict JSON
+    // schema used elsewhere in this app, so that fallback asks for plain JSON in the reply text and
+    // pulls it out with a regex instead of relying on the schema to guarantee the shape.
+    // Nutritionix free signups were discontinued (confirmed 2026-08-16, see Calorie App
+    // notes) - a key now needs a sales-arranged business trial, not a quick personal signup.
+    // This no longer prompts for credentials that can't actually be obtained; it only uses a
+    // key if one is already sitting in storage from before, so every restaurant lookup falls
+    // straight through to the Gemini web-search fallback below instead of stopping twice to
+    // ask for an ID and key that don't exist. If Nutritionix ever reopens signups, a key can
+    // be dropped in via the browser console (localStorage.setItem('nixAppId', ...) /
+    // 'nixAppKey') to reactivate this path with no code change needed.
+    function nixCreds() {
+      const id = localStorage.getItem('nixAppId');
+      const key = localStorage.getItem('nixAppKey');
+      return (id && key) ? { id: id, key: key } : null;
+    }
+
+    async function lookupRestaurantFood(foodDesc, restaurant) {
+      const creds = nixCreds();
+      if (!creds) return null;
+      let r;
+      try {
+        r = await fetch('https://trackapi.nutritionix.com/v2/natural/nutrients', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-app-id': creds.id,
+            'x-app-key': creds.key
+          },
+          body: JSON.stringify({ query: foodDesc + ' from ' + restaurant })
+        });
+      } catch (e) {
+        return null;
+      }
+      if (r.status === 401) {
+        localStorage.removeItem('nixAppId');
+        localStorage.removeItem('nixAppKey');
+        return null;
+      }
+      if (!r.ok) return null;
+      const data = await r.json();
+      debugEl.textContent = JSON.stringify(data).slice(0, 600);
+      if (!data.foods || !data.foods.length) return null;
+      const totals = { kcal: 0, protein: 0, fat: 0, carbs: 0 };
+      data.foods.forEach(function (f) {
+        totals.kcal += f.nf_calories || 0;
+        totals.protein += f.nf_protein || 0;
+        totals.fat += f.nf_total_fat || 0;
+        totals.carbs += f.nf_total_carbohydrate || 0;
+      });
+      const label = data.foods.map(function (f) { return f.food_name; }).join(' + ');
+      return {
+        name: restaurant + ' — ' + label,
+        kcal: Math.round(totals.kcal),
+        protein: Math.round(totals.protein),
+        fat: Math.round(totals.fat),
+        carbs: Math.round(totals.carbs)
+      };
+    }
+
+    async function askGeminiSearch(foodDesc, restaurant) {
+      const key = await ensureApiKey();
+      if (!key) return null;
+      const instructions = 'Search the web for the exact published nutrition information for this restaurant menu item: "' + foodDesc + '" at ' + restaurant + '. Prefer the restaurant\'s own nutrition page or calculator if you can find one. Reply with ONLY a JSON object and no other text, no markdown formatting, in exactly this shape: {"name": "short name including the restaurant", "kcal": number, "protein": number, "fat": number, "carbs": number}. If you cannot find an exact match, use the closest published item you can find and say so in the name.';
+      const r = await safeFetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: instructions }] }],
+          tools: [{ google_search: {} }]
+        })
+      });
+      if (!r) return null;
+      const data = await r.json();
+      const text = (data.candidates?.[0]?.content?.parts || []).map(function (p) { return p.text || ''; }).join('');
+      debugEl.textContent = text.slice(0, 600);
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) return null;
+      try {
+        const f = JSON.parse(match[0]);
+        if (!f.name || f.kcal == null) return null;
+        return {
+          name: f.name,
+          kcal: Math.round(f.kcal),
+          protein: Math.round(f.protein || 0),
+          fat: Math.round(f.fat || 0),
+          carbs: Math.round(f.carbs || 0)
+        };
+      } catch (e) {
+        return null;
+      }
+    }
+
+    descBtn.addEventListener('click', async function () {
+  if (!desc.value) return;
+  lastPhotoTaken = null; // typed, not photographed — this save will need its own photo
+  descBtn.disabled = true;
+  editor.style.display = 'none';
+      portion.style.display = 'none';
+      preview.removeAttribute('src');
+      const restaurant = descRestaurant.value.trim();
+      if (restaurant) {
+        statusEl.textContent = 'Checking the restaurant database for ' + desc.value + '...';
+        let food = await lookupRestaurantFood(desc.value, restaurant);
+        let kind = 'restaurant database';
+        if (!food) {
+          statusEl.textContent = 'Not in the database — searching the web...';
+          food = await askGeminiSearch(desc.value, restaurant);
+          kind = 'web search';
+        }
+        if (!food) {
+          statusEl.textContent = 'Could not find that meal — try simplifying the description, or type the numbers in yourself';
+        } else {
+          showFood(food, kind);
+        }
+      } else {
+        statusEl.textContent = 'Thinking...';
+        await askGemini([{ text: 'The user ate: ' + desc.value }]);
+      }
+  desc.value = '';
+  descRestaurant.value = '';
+  descBtn.disabled = false;
+});
+
+    manualBtn.addEventListener('click', function () {
+      pending = null;
+      editingIndex = null;
+      lastPhotoTaken = null;
+      portion.style.display = 'none';
+      preview.removeAttribute('src');
+      fName.value = '';
+      fKcal.value = '';
+      fProtein.value = '';
+      fFat.value = '';
+      fCarbs.value = '';
+      editor.style.display = 'block';
+      saveBtn.style.display = 'none';
+      logBtns.style.display = 'none';
+      warned = false;
+      setSavePhoto(null);
+      statusEl.textContent = 'Type the numbers off the label, then take a photo of it';
+    });
+
+    document.querySelectorAll('.tab').forEach(function (t) {
+      t.addEventListener('click', function () {
+        document.querySelectorAll('.view').forEach(function (v) { v.style.display = 'none'; });
+        document.getElementById(t.dataset.view).style.display = 'block';
+        document.querySelectorAll('.tab').forEach(function (b) { b.classList.remove('active'); });
+        t.classList.add('active');
+        if (t.dataset.view === 'weightView') showWeight();
+        if (t.dataset.view === 'historyView') showHistory();
+      });
+    });
+
+    // Top-level Eating / Fitness switcher. Everything downstream — every button, every active
+    // tab, the "+" chips — reads its color from the --accent CSS variable, so flipping this one
+    // class on <body> is the entire redesign: no per-element restyling needed when the section
+    // changes. eatingSection and fitnessSection are simple show/hide, same pattern as .view.
+    document.querySelectorAll('.mode').forEach(function (m) {
+      m.addEventListener('click', function () {
+        const fitness = m.dataset.section === 'fitness';
+        document.getElementById('eatingSection').style.display = fitness ? 'none' : 'block';
+        document.getElementById('fitnessSection').style.display = fitness ? 'block' : 'none';
+        document.querySelectorAll('.mode').forEach(function (b) { b.classList.remove('active'); });
+        m.classList.add('active');
+        document.body.classList.toggle('mode-fitness', fitness);
+        if (fitness) { showRoutineList(); populateRoutinePick(); }
+      });
+    });
+
+    document.querySelectorAll('.wtab').forEach(function (t) {
+      t.addEventListener('click', function () {
+        document.querySelectorAll('.wview').forEach(function (v) { v.style.display = 'none'; });
+        document.getElementById(t.dataset.wview).style.display = 'block';
+        document.querySelectorAll('.wtab').forEach(function (b) { b.classList.remove('active'); });
+        t.classList.add('active');
+        if (t.dataset.wview === 'wRanksSub') showRanks();
+        if (t.dataset.wview === 'wGoalsSub') showGoals();
+      });
+    });
+
+    let weights = loadJSON('weights', []);
+    const wDate = document.getElementById('wDate');
+    const wLbs = document.getElementById('wLbs');
+    const wAdd = document.getElementById('wAdd');
+    const weightEl = document.getElementById('weight');
+    const historyEl = document.getElementById('history');
+    const adviceEl = document.getElementById('advice');
+    const rName = document.getElementById('rName');
+    const rIng = document.getElementById('rIng');
+    const rServings = document.getElementById('rServings');
+    const rCalc = document.getElementById('rCalc');
+    const rResult = document.getElementById('rResult');
+    let recipeDraft = null;
+    const rRead = document.getElementById('rRead');
+    const rPhoto = document.getElementById('rPhoto');
+    let recipeSteps = [];
+    // Photo of the finished dish, required before a recipe can be saved as a meal — this is what
+    // lets the AI recognise it from a photo later instead of only matching it by name. Persists
+    // across recalculating the macros (editing an ingredient doesn't mean the dish looks
+    // different) and only clears once the recipe is actually saved or a new one is read in.
+    let recipePhoto = null;
+    let lastRecipeIngredients = null;
+    let lastRecipeServings = null;
+    const cSex = document.getElementById('cSex');
+    // The targets calculator already asks for sex (for the BMR formula), so the workout ranking
+    // feature reuses that same answer instead of asking a second time in a different tab — set it
+    // once here, it drives both. Read directly from localStorage rather than the `liftSex`
+    // variable (declared further down the script) to avoid the exact temporal-dead-zone trap
+    // logged from session 10 and guarded against again in session 15.
+    const storedLiftSex = localStorage.getItem('liftSex');
+    if (storedLiftSex) cSex.value = storedLiftSex;
+    cSex.addEventListener('change', function () {
+      liftSex = cSex.value;
+      store('liftSex', liftSex);
+      showRanks();
+    });
+    const cAge = document.getElementById('cAge');
+    const cFt = document.getElementById('cFt');
+    const cIn = document.getElementById('cIn');
+    const cLbs = document.getElementById('cLbs');
+    const cAct = document.getElementById('cAct');
+    const cTarget = document.getElementById('cTarget');
+    const cDir = document.getElementById('cDir');
+    const cRate = document.getElementById('cRate');
+    const cCalc = document.getElementById('cCalc');
+    const cResult = document.getElementById('cResult');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const calcPanel = document.getElementById('calcPanel');
+    // The settings panel now sits in the markup right after the Weight tab's header (before the
+    // weigh-in form and chart), and opening it also scrolls it into view. That second part matters
+    // because switching tabs doesn't reset scroll position — if you'd scrolled down on another tab,
+    // the panel could open below where you're looking even though it's near the top of this one.
+    settingsBtn.addEventListener('click', function () {
+      const opening = calcPanel.style.display === 'none';
+      calcPanel.style.display = opening ? 'block' : 'none';
+      if (opening) calcPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+const bkBox = document.getElementById('bkBox');
+    let restoreArmed = false;
+
+    function backupText() {
+      return JSON.stringify({
+        app: 'calorie-tracker',
+        saved: new Date().toString(),
+        meals: meals,
+        log: log,
+        weights: weights,
+        targets: targets,
+        routines: routines,
+        workouts: workouts,
+        liftSex: liftSex,
+        goals: goals
+      });
+    }
+
+    document.getElementById('bkMake').addEventListener('click', function () {
+      bkBox.value = backupText();
+      restoreArmed = false;
+      statusEl.textContent = 'Backup made - ' + meals.length + ' saved meals, ' + Object.keys(log).length + ' days, ' + weights.length + ' weigh-ins';
+    });
+
+    document.getElementById('bkCopy').addEventListener('click', function () {
+      if (!bkBox.value) bkBox.value = backupText();
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(bkBox.value);
+        statusEl.textContent = 'Copied - paste it somewhere safe';
+      } else {
+        bkBox.select();
+        statusEl.textContent = 'Select the text and copy it yourself';
+      }
+    });
+
+    document.getElementById('bkDownload').addEventListener('click', function () {
+      // The anchor used to be clicked without ever being added to the page,
+      // and the blob URL was revoked on the very next line -- synchronously,
+      // right after click(). iOS Safari starts a download asynchronously, so
+      // it was regularly having the data pulled out from under it, which is
+      // why the message below used to end "If nothing happened, use Copy
+      // instead." This is the ONLY backup path for data that has no server
+      // copy anywhere, so it should not be a coin flip.
+      const url = URL.createObjectURL(new Blob([backupText()], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'calorie-backup-' + todayKey() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 4000);
+      statusEl.textContent = 'Downloaded. If nothing happened, use Copy instead.';
+    });
+
+    document.getElementById('bkRestore').addEventListener('click', function () {
+      let data;
+      try {
+        data = JSON.parse(bkBox.value);
+      } catch (e) {
+        statusEl.textContent = 'That is not a valid backup';
+        return;
+      }
+      if (data.app !== 'calorie-tracker') {
+        statusEl.textContent = 'That is not a backup from this app';
+        return;
+      }
+      if (!restoreArmed) {
+        restoreArmed = true;
+        statusEl.textContent = 'This wipes everything in the app and replaces it. Tap Restore again if that is right.';
+        return;
+      }
+      restoreArmed = false;
+      meals = data.meals || [];
+      log = data.log || {};
+      weights = data.weights || [];
+      targets = data.targets || targets;
+      routines = data.routines || [];
+      workouts = data.workouts || [];
+      liftSex = data.liftSex || liftSex;
+      goals = data.goals || [];
+      saveMeals();
+      store('log', log);
+      saveWeights();
+      store('targets', targets);
+      saveRoutines();
+      saveWorkouts();
+      saveGoals();
+      if (liftSex) { store('liftSex', liftSex); cSex.value = liftSex; }
+      showSaved();
+      showToday();
+      showWeight();
+      showRoutineList();
+      populateRoutinePick();
+      statusEl.textContent = 'Restored - ' + meals.length + ' saved meals, ' + Object.keys(log).length + ' days';
+    });
+    let calcDraft = null;
+    wDate.value = todayKey();
+
+    function saveWeights() {
+      weights.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+      store('weights', weights);
+    }
+
+    wAdd.addEventListener('click', function () {
+      const lbs = Number(wLbs.value);
+      if (!lbs || !wDate.value) {
+        statusEl.textContent = 'Enter a date and a weight';
+        return;
+      }
+      weights = weights.filter(function (w) { return w.date !== wDate.value; });
+      weights.push({ date: wDate.value, lbs: lbs });
+      saveWeights();
+      wLbs.value = '';
+      statusEl.textContent = 'Logged ' + lbs + ' lbs for ' + wDate.value;
+      showWeight();
+    });
+
+    function showWeight() {
+      if (weights.length) cLbs.value = weights[weights.length - 1].lbs;
+      drawChart();
+      showAdvice();
+      if (!weights.length) {
+        weightEl.innerHTML = '<b>Weigh-ins</b><br><br>' + emptyStateHTML('Nothing logged yet.');
+        return;
+      }
+      let rows = '';
+      weights.slice().reverse().forEach(function (w) {
+        rows += '<div class="row"><span>' + w.date + '</span><span>' + w.lbs +
+          ' lbs <button class="delw" data-d="' + w.date + '">×</button></span></div>';
+      });
+      weightEl.innerHTML = '<b>Weigh-ins</b>' + rows;
+    }
+
+    weightEl.addEventListener('click', function (ev) {
+      if (!ev.target.classList.contains('delw')) return;
+      const d = ev.target.dataset.d;
+      const removed = weights.find(function (w) { return w.date === d; });
+      weights = weights.filter(function (w) { return w.date !== d; });
+      saveWeights();
+      showWeight();
+      showUndo('Deleted weigh-in for ' + d, function () {
+        weights.push(removed);
+        saveWeights();
+        showWeight();
+      });
+    });
+
+
+    showWeight();
+
+    function dayTotal(key) {
+      const t = { kcal: 0, protein: 0, fat: 0, carbs: 0 };
+      (log[key] || []).forEach(function (e) {
+        t.kcal += e.kcal;
+        t.protein += e.protein;
+        t.fat += e.fat;
+        t.carbs += e.carbs;
+      });
+      return t;
+    }
+
+    function weekStart(dateStr) {
+      const p = dateStr.split('-').map(Number);
+      const d = new Date(p[0], p[1] - 1, p[2]);
+      const day = (d.getDay() + 6) % 7;
+      d.setDate(d.getDate() - day);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    // --- Eating-side gamification ---
+    // Mirrors the workout streak (session 23) for the daily food log, plus a handful of
+    // milestone badges. One real difference from the workout streak: no rest-day grace — you
+    // eat every day, so a gap of even one day breaks the count, where the workout side
+    // deliberately allows up to two rest days between sessions.
+    function computeFoodStreak() {
+      const dates = Object.keys(log).filter(function (k) { return log[k].length; }).sort();
+      if (!dates.length) return { count: 0, best: 0 };
+      let count = 1, best = 1;
+      for (let i = 1; i < dates.length; i++) {
+        const gap = dayNumber(dates[i]) - dayNumber(dates[i - 1]);
+        count = (gap === 1) ? count + 1 : 1;
+        if (count > best) best = count;
+      }
+      const sinceLast = dayNumber(todayKey()) - dayNumber(dates[dates.length - 1]);
+      return { count: sinceLast <= 1 ? count : 0, best: best };
+    }
+
+    // Badges are computed fresh from current data every time, not stored as "unlocked once"
+    // flags — simpler, and it means a badge can never drift out of sync with the data it's
+    // supposed to represent (backup/restore needs nothing extra for this reason). The one real
+    // cost: a count-based badge (saved meals, days logged) could theoretically un-earn itself
+    // if that data is later deleted. The streak badges can't regress this way since they key
+    // off the best streak ever reached, not the current one.
+    const BADGES = [
+      { label: '3-day streak', test: function (ctx) { return ctx.bestStreak >= 3; } },
+      { label: '7-day streak', test: function (ctx) { return ctx.bestStreak >= 7; } },
+      { label: '30-day streak', test: function (ctx) { return ctx.bestStreak >= 30; } },
+      { label: '10 saved meals', test: function (ctx) { return ctx.savedMeals >= 10; } },
+      { label: '30 days logged', test: function (ctx) { return ctx.daysLogged >= 30; } },
+      { label: '7 days on target', test: function (ctx) { return ctx.onTargetDays >= 7; } }
+    ];
+
+    function computeBadgeContext() {
+      const days = Object.keys(log).filter(function (k) { return log[k].length; });
+      const onTarget = days.filter(function (k) { return Math.abs(dayTotal(k).kcal - targets.kcal) <= 150; });
+      return {
+        bestStreak: computeFoodStreak().best,
+        savedMeals: meals.length,
+        daysLogged: days.length,
+        onTargetDays: onTarget.length
+      };
+    }
+
+    function badgesHTML() {
+      const ctx = computeBadgeContext();
+      const chips = BADGES.map(function (b) {
+        const earned = b.test(ctx);
+        return '<span style="display:inline-block;padding:6px 10px;margin:0 6px 6px 0;border-radius:999px;font-size:12px;' +
+          (earned ? 'background:var(--accent);color:var(--on-accent)' : 'background:var(--track);color:var(--text-dim)') +
+          '">' + (earned ? '✓ ' : '') + b.label + '</span>';
+      }).join('');
+      return '<b>Badges</b><div style="margin:8px 0 16px">' + chips + '</div>';
+    }
+
+    function showHistory() {
+      const keys = Object.keys(log).filter(function (k) { return log[k].length; }).sort().reverse();
+      const badges = badgesHTML();
+      if (!keys.length) {
+        historyEl.innerHTML = badges + '<b>History</b><br><br>' + emptyStateHTML('Nothing logged yet.');
+        return;
+      }
+      const weeks = {};
+      keys.forEach(function (k) {
+        const t = dayTotal(k);
+        const ws = weekStart(k);
+        if (!weeks[ws]) weeks[ws] = { days: 0, kcal: 0, protein: 0, fat: 0, carbs: 0 };
+        weeks[ws].days += 1;
+        weeks[ws].kcal += t.kcal;
+        weeks[ws].protein += t.protein;
+        weeks[ws].fat += t.fat;
+        weeks[ws].carbs += t.carbs;
+      });
+      let html = '<b>Weekly averages</b>';
+      Object.keys(weeks).sort().reverse().forEach(function (ws) {
+        const w = weeks[ws];
+        html += '<div class="row"><span>Week of ' + ws + '</span><span>' +
+          Math.round(w.kcal / w.days) + ' kcal/day</span></div>' +
+          '<div class="sub">' + w.days + ' days logged · ' + Math.round(w.protein / w.days) + 'p ' +
+          Math.round(w.fat / w.days) + 'f ' + Math.round(w.carbs / w.days) + 'c per day</div>';
+      });
+      html += '<div class="mealhead">Every day</div>';
+      keys.forEach(function (k) {
+        const t = dayTotal(k);
+        html += '<div class="row"><span>' + k + '</span><span>' + Math.round(t.kcal) + ' kcal · ' +
+          Math.round(t.protein) + 'p ' + Math.round(t.fat) + 'f ' + Math.round(t.carbs) + 'c</span></div>';
+      });
+      historyEl.innerHTML = badges + html;
+    }
+
+    function dayNumber(dateStr) {
+      const p = dateStr.split('-').map(Number);
+      return Math.round(new Date(p[0], p[1] - 1, p[2]).getTime() / 86400000);
+    }
+
+    // "A week's worth" means 7 weigh-ins that are actually close together, not just 7 that have
+    // ever been logged (someone weighing in once a month would otherwise get a meaningless
+    // average). Looks at only the most recent 7 and checks they span 10 days or less — daily
+    // weigh-ins with the occasional missed day still qualify, sparse ones don't. Re-checked every
+    // time the chart draws, so it can switch back to daily if logging gets sparse later.
+    function isWeeklyMode() {
+      if (weights.length < 7) return false;
+      const last7 = weights.slice(-7);
+      const span = dayNumber(last7[last7.length - 1].date) - dayNumber(last7[0].date);
+      return span <= 10;
+    }
+
+    function drawChart() {
+      const c = document.getElementById('wChart');
+      const chartNote = document.getElementById('chartNote');
+      const w = c.clientWidth;
+      const h = c.clientHeight;
+      if (!w) return;
+      const dpr = window.devicePixelRatio || 1;
+      c.width = w * dpr;
+      c.height = h * dpr;
+      const ctx = c.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      ctx.font = '11px -apple-system, sans-serif';
+
+      // Canvas can't read CSS variables directly the way the rest of the app's colors do, so the
+      // three colors this chart needs are pulled from the live computed style instead of being
+      // hardcoded — that's what lets the line switch from cyan to violet automatically if this
+      // chart is ever shown from the Fitness section, with no change needed here.
+      const styles = getComputedStyle(document.body);
+      const lineColor = styles.getPropertyValue('--accent').trim() || '#4fd1e8';
+      const gridColor = styles.getPropertyValue('--track').trim() || '#1e1e26';
+      const dimColor = styles.getPropertyValue('--text-dim').trim() || '#9a9aa5';
+
+      const weekly = isWeeklyMode();
+      // In weekly mode, one point per calendar week (same grouping the History tab uses for
+      // calories) — the average of whatever weigh-ins fell in that week. Every individual
+      // weigh-in still shows in the list below the chart either way; only the chart's points
+      // change.
+      let points;
+      if (weekly) {
+        const weeks = {};
+        weights.forEach(function (p) {
+          const ws = weekStart(p.date);
+          if (!weeks[ws]) weeks[ws] = { sum: 0, n: 0 };
+          weeks[ws].sum += p.lbs;
+          weeks[ws].n += 1;
+        });
+        points = Object.keys(weeks).sort().map(function (ws) {
+          return { date: ws, lbs: weeks[ws].sum / weeks[ws].n };
+        });
+      } else {
+        points = weights;
+      }
+      if (chartNote) {
+        chartNote.textContent = weekly
+          ? 'Weekly averages — one point per week. Every weigh-in is still listed below.'
+          : (weights.length ? 'Daily weigh-ins — switches to weekly averages once 7 in a row are logged within about 10 days.' : '');
+      }
+
+      if (points.length < 2) {
+        ctx.fillStyle = dimColor;
+        ctx.fillText('Log at least two weigh-ins to see a trend', 8, h / 2);
+        return;
+      }
+      const pad = 30;
+      const lbsList = points.map(function (p) { return p.lbs; });
+      let lo = Math.min.apply(null, lbsList);
+      let hi = Math.max.apply(null, lbsList);
+      if (hi - lo < 4) {
+        const mid = (hi + lo) / 2;
+        lo = mid - 2;
+        hi = mid + 2;
+      }
+      const t0 = dayNumber(points[0].date);
+      const t1 = dayNumber(points[points.length - 1].date);
+      function px(d) { return pad + (dayNumber(d) - t0) / Math.max(1, t1 - t0) * (w - pad - 10); }
+      function py(v) { return h - pad - (v - lo) / (hi - lo) * (h - pad - 14); }
+      ctx.strokeStyle = gridColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad, h - pad);
+      ctx.lineTo(w - 10, h - pad);
+      ctx.stroke();
+      ctx.fillStyle = dimColor;
+      ctx.fillText(Math.round(hi) + ' lb', 2, py(hi) + 4);
+      ctx.fillText(Math.round(lo) + ' lb', 2, py(lo) + 4);
+      ctx.fillText(points[0].date.slice(5), pad, h - 10);
+      ctx.fillText(points[points.length - 1].date.slice(5), w - 42, h - 10);
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      points.forEach(function (p, i) {
+        if (i === 0) ctx.moveTo(px(p.date), py(p.lbs));
+        else ctx.lineTo(px(p.date), py(p.lbs));
+      });
+      ctx.stroke();
+      ctx.fillStyle = lineColor;
+      points.forEach(function (p) {
+        ctx.beginPath();
+        ctx.arc(px(p.date), py(p.lbs), 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function weightTrend(days) {
+      const cutoff = dayNumber(todayKey()) - days;
+      const pts = weights.filter(function (p) { return dayNumber(p.date) >= cutoff; });
+      if (pts.length < 2) return null;
+      const span = dayNumber(pts[pts.length - 1].date) - dayNumber(pts[0].date);
+      if (span < 7) return null;
+      let sx = 0, sy = 0, sxx = 0, sxy = 0;
+      const n = pts.length;
+      pts.forEach(function (p) {
+        const x = dayNumber(p.date);
+        sx += x;
+        sy += p.lbs;
+        sxx += x * x;
+        sxy += x * p.lbs;
+      });
+      const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+      return { lbsPerWeek: slope * 7, n: n, days: span };
+    }
+
+    function avgIntake(days) {
+      const cutoff = dayNumber(todayKey()) - days;
+      const keys = Object.keys(log).filter(function (k) {
+        return log[k].length && dayNumber(k) >= cutoff;
+      });
+      if (!keys.length) return null;
+      let total = 0;
+      keys.forEach(function (k) { total += dayTotal(k).kcal; });
+      return { avg: total / keys.length, days: keys.length };
+    }
+
+    function showAdvice() {
+      const t = weightTrend(28);
+      const intake = avgIntake(14);
+      let html = '<b>Calibration</b><br><br>';
+      if (intake) {
+        html += 'Averaging <b>' + Math.round(intake.avg) + ' kcal</b> across ' + intake.days +
+          ' logged days, against a target of ' + targets.kcal + '.<br><br>';
+      }
+      if (!t) {
+        adviceEl.innerHTML = html + 'Log two weigh-ins at least a week apart and I can tell you whether to adjust.';
+        return;
+      }
+      const r = t.lbsPerWeek;
+      html += 'Trend: <b>' + (r >= 0 ? '+' : '') + r.toFixed(2) + ' lb/week</b> over ' +
+        t.days + ' days, from ' + t.n + ' weigh-ins.<br><br>';
+      if (intake && intake.avg < targets.kcal - 250) {
+        html += 'You are averaging ' + Math.round(targets.kcal - intake.avg) +
+          ' kcal a day under target. Hit the target you already have before changing it.';
+      } else if (r < 0.25) {
+        html += 'Slower than the 0.25–0.75 lb/week band. Add about 200 kcal a day and check again in two weeks.';
+      } else if (r > 0.75) {
+        html += 'Faster than 0.75 lb/week — more of that gain is fat than it needs to be. Cut about 200 kcal a day.';
+      } else {
+        html += 'Inside the 0.25–0.75 lb/week band. Leave your calories where they are.';
+      }
+      adviceEl.innerHTML = html;
+    }
+
+    const recipeSchema = {
+      type: 'OBJECT',
+      properties: {
+        ingredients: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              item: { type: 'STRING' },
+              kcal: { type: 'NUMBER' },
+              protein: { type: 'NUMBER' },
+              fat: { type: 'NUMBER' },
+              carbs: { type: 'NUMBER' }
+            },
+            required: ['item', 'kcal', 'protein', 'fat', 'carbs']
+          }
+        }
+      },
+      required: ['ingredients']
+    };
+
+    rCalc.addEventListener('click', async function () {
+  const text = rIng.value.trim();
+  if (!text) {
+    statusEl.textContent = 'Type the ingredients first';
+    return;
+  }
+  if (!Number(rServings.value)) {
+    statusEl.textContent = 'How many servings does the batch make?';
+    return;
+  }
+  rCalc.disabled = true;
+  statusEl.textContent = 'Working out the macros...';
+  recipeSteps = [];
+  const instructions = 'Below is the ingredient list for ONE BATCH of a recipe. For each ingredient line, return the total kcal, protein, fat and carbs in grams for the amount stated on that line. Do not divide by servings. Do not add ingredients that are not listed. Keep the item text close to what the user wrote.';
+  const data = await callGemini([{ text: text }], instructions, recipeSchema);
+  rCalc.disabled = false;
+  if (!data) return;
+  showRecipe(data.ingredients, Number(rServings.value));
+});
+
+    function showRecipe(ingredients, servings) {
+      lastRecipeIngredients = ingredients;
+      lastRecipeServings = servings;
+      const total = { kcal: 0, protein: 0, fat: 0, carbs: 0 };
+      let rows = '';
+      ingredients.forEach(function (g) {
+        total.kcal += g.kcal;
+        total.protein += g.protein;
+        total.fat += g.fat;
+        total.carbs += g.carbs;
+        rows += '<div class="row"><span>' + g.item + '</span><span>' + Math.round(g.kcal) + ' kcal</span></div>' +
+          '<div class="sub">' + Math.round(g.protein) + 'p ' + Math.round(g.fat) + 'f ' + Math.round(g.carbs) + 'c</div>';
+      });
+      const per = {
+        name: rName.value || 'Recipe',
+        kcal: Math.round(total.kcal / servings),
+        protein: Math.round(total.protein / servings),
+        fat: Math.round(total.fat / servings),
+        carbs: Math.round(total.carbs / servings)
+      };
+      recipeDraft = per;
+      const warn = macroCheck(per);
+      // A photo of the finished dish is required before Save works — that photo is what lets the
+      // app recognise this recipe from a photo later instead of just matching it by name.
+      const photoBlock = recipePhoto
+        ? '<img id="rFinalPreview" src="data:image/jpeg;base64,' + recipePhoto + '">' +
+          '<label for="rFinalPhoto" class="photobtn grey">Retake photo</label>'
+        : '<div class="sub">Required — take a photo of the finished dish before saving.</div>' +
+          '<label for="rFinalPhoto" class="photobtn">Photograph the finished dish</label>';
+      rResult.innerHTML = '<b>Ingredients</b>' + rows +
+        '<div class="mealhead">Whole batch</div>' +
+        '<div class="row"><span>' + ingredients.length + ' ingredients</span><span>' +
+        Math.round(total.kcal) + ' kcal · ' + Math.round(total.protein) + 'p ' +
+        Math.round(total.fat) + 'f ' + Math.round(total.carbs) + 'c</span></div>' +
+        '<div class="mealhead">One serving, batch divided by ' + servings + '</div>' +
+        '<div class="row"><span>' + per.name + '</span><span>' + per.kcal + ' kcal · ' +
+        per.protein + 'p ' + per.fat + 'f ' + per.carbs + 'c</span></div>' +
+        (warn ? '<div class="sub">' + warn + '</div>' : '') +
+        (recipeSteps.length ? '<div class="mealhead">Method</div><ol class="steps"><li>' + recipeSteps.join('</li><li>') + '</li></ol>' : '') +
+        '<div class="mealhead">Photo of the finished dish</div>' + photoBlock +
+        '<input type="file" accept="image/*" capture="environment" id="rFinalPhoto">' +
+        '<button id="rSave"' + (recipePhoto ? '' : ' disabled') + '>Save as a meal</button>';
+      statusEl.textContent = 'Worked out from ' + ingredients.length + ' ingredients';
+    }
+
+    rResult.addEventListener('change', async function (ev) {
+      if (ev.target.id !== 'rFinalPhoto') return;
+      const file = ev.target.files[0];
+      if (!file) return;
+      statusEl.textContent = 'Saving the photo...';
+      recipePhoto = await shrink(file, 700);
+      statusEl.textContent = 'Photo attached — tap Save as a meal';
+      showRecipe(lastRecipeIngredients, lastRecipeServings);
+    });
+
+    rResult.addEventListener('click', function (ev) {
+      if (ev.target.id !== 'rSave' || !recipeDraft) return;
+      if (!recipePhoto) {
+        statusEl.textContent = 'Take a photo of the finished dish first';
+        return;
+      }
+      recipeDraft.photo = recipePhoto;
+      meals.push(recipeDraft);
+      saveMeals();
+      showSaved();
+      recipePhoto = null;
+      statusEl.textContent = 'Saved ' + recipeDraft.name + ' — it is now in Saved meals and photo recognition';
+    });
+
+    const fullRecipeSchema = {
+      type: 'OBJECT',
+      properties: {
+        name: { type: 'STRING' },
+        servings: { type: 'NUMBER' },
+        ingredients: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              item: { type: 'STRING' },
+              kcal: { type: 'NUMBER' },
+              protein: { type: 'NUMBER' },
+              fat: { type: 'NUMBER' },
+              carbs: { type: 'NUMBER' }
+            },
+            required: ['item', 'kcal', 'protein', 'fat', 'carbs']
+          }
+        },
+        steps: { type: 'ARRAY', items: { type: 'STRING' } }
+      },
+      required: ['name', 'servings', 'ingredients', 'steps']
+    };
+
+    async function readRecipe(parts) {
+      recipePhoto = null; // a new recipe is being read in — any earlier finished-dish photo no longer applies
+      statusEl.textContent = 'Reading the recipe...';
+      const instructions = 'This is a recipe the user copied or photographed. Extract it. Return the recipe name; how many servings the batch makes, or 0 if the recipe does not say; the ingredient list, giving for each ingredient the kcal, protein, fat and carbs in grams for the amount stated FOR THE WHOLE BATCH and not per serving; and the method steps as written in the text, condensed but never invented. If the text contains no method at all, return an empty steps list.';
+      const data = await callGemini(parts, instructions, fullRecipeSchema);
+      if (!data) return;
+      if (data.name) rName.value = data.name;
+      if (data.servings) rServings.value = data.servings;
+      recipeSteps = data.steps || [];
+      if (!Number(rServings.value)) {
+        rIng.value = data.ingredients.map(function (g) { return g.item; }).join('\n');
+        statusEl.textContent = 'The recipe did not say how many servings — type it in, then hit Work out the macros';
+        return;
+      }
+      showRecipe(data.ingredients, Number(rServings.value));
+    }
+
+    rRead.addEventListener('click', function () {
+      if (!rIng.value.trim()) {
+        statusEl.textContent = 'Paste the recipe into the box first';
+        return;
+      }
+      readRecipe([{ text: rIng.value.trim() }]);
+    });
+
+    rPhoto.addEventListener('change', async function () {
+      const file = rPhoto.files[0];
+      if (!file) return;
+      statusEl.textContent = 'Converting...';
+      const base64 = await shrink(file, 1600);
+      readRecipe([{ inline_data: { mime_type: 'image/jpeg', data: base64 } }]);
+    });
+
+    function statRow(label, value) {
+      return '<div class="row"><span>' + label + '</span><span>' + value + '</span></div>';
+    }
+
+    const rates = {
+      bulk: { slow: 0.25, mod: 0.5, fast: 1 },
+      cut: { slow: -0.5, mod: -1, fast: -1.5 },
+      hold: { slow: 0, mod: 0, fast: 0 }
+    };
+
+    cCalc.addEventListener('click', function () {
+      const age = Number(cAge.value);
+      const inches = Number(cFt.value) * 12 + Number(cIn.value);
+      const lbs = Number(cLbs.value);
+      if (!age || !inches || !lbs) {
+        statusEl.textContent = 'Fill in age, height and weight';
+        return;
+      }
+      // Save the sex pick here too, not just from the dropdown's own 'change' event (line ~1817)
+      // -- if the dropdown's default already matched what you wanted, the browser never fires
+      // 'change' on it, so liftSex silently never got saved even though the calculator looked
+      // right on screen. This is the bug behind "Progress screen still says set your goals."
+      liftSex = cSex.value;
+      store('liftSex', liftSex);
+      const kg = lbs * 0.45359237;
+      const cm = inches * 2.54;
+      const bmr = 10 * kg + 6.25 * cm - 5 * age + (cSex.value === 'm' ? 5 : -161);
+      const tdee = bmr * Number(cAct.value);
+      const rate = rates[cDir.value][cRate.value];
+      const kcal = Math.round(tdee + rate * 500);
+      const protein = Math.round(lbs);
+      const fat = Math.round(kcal * 0.25 / 9);
+      const carbs = Math.round((kcal - protein * 4 - fat * 9) / 4);
+      calcDraft = { kcal: kcal, protein: protein, fat: fat, carbs: carbs };
+      let html = '<b>Your numbers</b>' +
+        statRow('BMR — burned doing nothing', Math.round(bmr) + ' kcal') +
+        statRow('TDEE — maintenance', Math.round(tdee) + ' kcal') +
+        statRow('Daily target', kcal + ' kcal') +
+        statRow('Protein', protein + ' g') +
+        statRow('Fat', fat + ' g') +
+        statRow('Carbs', carbs + ' g') +
+        statRow('Expected rate', (rate > 0 ? '+' : '') + rate + ' lb/week');
+      const goal = Number(cTarget.value);
+      if (goal && rate) {
+        const weeks = (goal - lbs) / rate;
+        if (weeks > 0) {
+          const when = new Date();
+          when.setDate(when.getDate() + Math.round(weeks * 7));
+          html += statRow('Reaches ' + goal + ' lbs in', Math.round(weeks) + ' weeks') +
+            statRow('Which is around', when.toDateString().slice(4));
+        } else {
+          html += '<div class="sub">Your goal weight is on the other side of where you are — check bulk vs cut.</div>';
+        }
+      }
+      if (cDir.value === 'bulk' && rate > 0.75) {
+        html += '<div class="sub">Above 0.75 lb/week is faster than you can build muscle at your size. Most of the extra will be fat.</div>';
+      }
+      html += '<div class="sub">Protein at 1 g per lb of bodyweight, fat at 25% of calories, carbs are whatever is left.</div>' +
+        '<button id="cApply">Use these as my targets</button>';
+      cResult.innerHTML = html;
+      statusEl.textContent = 'Worked out from a BMR of ' + Math.round(bmr);
+    });
+
+    cResult.addEventListener('click', function (ev) {
+      if (ev.target.id !== 'cApply' || !calcDraft) return;
+      targets = calcDraft;
+      store('targets', targets);
+      showToday();
+      showAdvice();
+      statusEl.textContent = 'Targets updated to ' + targets.kcal + ' kcal';
+    });
+
+    // --- Workout tracking ---
+    // routines: [{name, exercises:[{name, sets, reps}]}] — a template you build once.
+    // workouts: [{date, routine, exercises:[{name, sets:[{weight,reps}]}]}] — one entry per
+    // completed session. "Last time" and "best ever" are both computed by scanning this array
+    // rather than stored separately, same approach dayTotal() already uses for food.
+    // Declared here (not up near `weights`/`meals`) deliberately: showRoutineList() and
+    // populateRoutinePick() are only ever called from a click handler, never at page load, so
+    // there is no risk of the temporal-dead-zone bug from session 10 (a `let` read before its own
+    // declaration line has run) — every read of these variables happens long after this line does.
+    let routines = loadJSON('routines', []);
+    let workouts = loadJSON('workouts', []);
+    let liftSex = localStorage.getItem('liftSex') || null;
+
+    function saveRoutines() { store('routines', routines); }
+    function saveWorkouts() { store('workouts', workouts); }
+
+    // Epley's formula — the same one Strength Level and most lifting apps use to turn a
+    // submaximal set into an estimated true 1-rep max, so a set of 135x8 can be compared on the
+    // same scale as a single all-out lift. A true single (reps <= 1) is left untouched.
+    function epley1RM(weight, reps) {
+      if (reps <= 1) return weight;
+      return weight * (1 + reps / 30);
+    }
+
+    function currentBodyweight() {
+      return weights.length ? weights[weights.length - 1].lbs : null;
+    }
+
+    // Bodyweight-ratio tiers for the lifts that actually have published strength standards behind
+    // them (real data from large numbers of lifters — not something this app invents). Numbers are
+    // approximate midpoints from public strength-standard sources, not copied from any one app.
+    // Ratio = estimated 1RM / bodyweight. Anything not matched below still shows a ratio, just
+    // without a beginner-to-elite label attached — there's no reliable public data for most
+    // accessory lifts, so faking a tier for them would be worse than being honest there isn't one.
+    const STANDARDS = {
+      m: {
+        'bench press': [0.5, 0.75, 1.0, 1.5, 2.0],
+        'squat': [0.75, 1.0, 1.5, 2.0, 2.75],
+        'deadlift': [1.0, 1.25, 2.0, 2.5, 3.0],
+        'overhead press': [0.35, 0.55, 0.8, 1.1, 1.4],
+        'barbell row': [0.4, 0.65, 0.9, 1.3, 1.7]
+      },
+      f: {
+        'bench press': [0.35, 0.5, 0.75, 1.0, 1.25],
+        'squat': [0.5, 0.75, 1.25, 1.5, 2.0],
+        'deadlift': [0.75, 1.0, 1.5, 1.75, 2.25],
+        'overhead press': [0.25, 0.35, 0.5, 0.7, 0.9],
+        'barbell row': [0.3, 0.45, 0.65, 0.9, 1.2]
+      }
+    };
+    const TIER_NAMES = ['Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite'];
+
+    // Matches by what the exercise name CONTAINS rather than an exact match, so "Back Squat" or
+    // "Front Squat" both find the squat table instead of only literally "squat". Trade-off worth
+    // knowing: variants get compared to the general table even though true standards differ a
+    // little between them (a front squat is harder than a back squat at the same weight).
+    function standardFor(name) {
+      if (!liftSex) return null;
+      const n = name.toLowerCase();
+      const t = STANDARDS[liftSex];
+      if (n.indexOf('bench') !== -1) return t['bench press'];
+      if (n.indexOf('squat') !== -1) return t['squat'];
+      if (n.indexOf('deadlift') !== -1) return t['deadlift'];
+      if (n.indexOf('overhead') !== -1 || n.indexOf('ohp') !== -1 || n.indexOf('shoulder press') !== -1) return t['overhead press'];
+      if (n.indexOf('row') !== -1) return t['barbell row'];
+      return null;
+    }
+
+    // Turns a ratio plus a 5-number tier table into one 0-100 score, so every lift lands on the
+    // same scale regardless of which one it is. Below the lowest threshold still scores 0-20
+    // (progress toward Beginner); past the top threshold keeps climbing past 100 instead of
+    // capping, so a lift well past Elite still reads as better than one just barely there.
+    function rankRatio(ratio, thresholds) {
+      const bands = [0].concat(thresholds);
+      for (let i = 0; i < thresholds.length; i++) {
+        if (ratio < thresholds[i]) {
+          const lo = bands[i], hi = bands[i + 1];
+          const pct = Math.round(((ratio - lo) / (hi - lo)) * 20 + i * 20);
+          return { tier: TIER_NAMES[i], score: Math.max(0, pct) };
+        }
+      }
+      const last = thresholds[thresholds.length - 1];
+      const over = (ratio - last) / last;
+      return { tier: 'Elite', score: Math.round(100 + over * 100) };
+    }
+
+    function lastSetsFor(name) {
+      for (let i = workouts.length - 1; i >= 0; i--) {
+        const ex = workouts[i].exercises.find(function (e) { return e.name === name; });
+        if (ex) return ex.sets;
+      }
+      return null;
+    }
+
+    // A routine's own exercise entry carries the "logged per dumbbell" flag (see exerciseRow),
+    // so this looks it up by name across every routine rather than needing it copied onto each
+    // logged workout. If the same exercise name shows up flagged in any routine, treat it as
+    // a dumbbell exercise everywhere — matches how standardFor()/goals already key off name.
+    function isDumbbellExercise(name) {
+      for (let i = 0; i < routines.length; i++) {
+        const ex = routines[i].exercises.find(function (e) { return e.name.toLowerCase() === name.toLowerCase(); });
+        if (ex && ex.dumbbell) return true;
+      }
+      return false;
+    }
+
+    function bestEver(name) {
+      let best = 0;
+      // People write down the number stamped on ONE dumbbell, but the real load lifted is
+      // 2x that — double it here, right before the 1RM math, so every ranking/goal number
+      // downstream is already correct without touching how sets get logged or displayed.
+      const factor = isDumbbellExercise(name) ? 2 : 1;
+      workouts.forEach(function (w) {
+        w.exercises.forEach(function (e) {
+          if (e.name !== name) return;
+          e.sets.forEach(function (s) {
+            const est = epley1RM(s.weight * factor, s.reps);
+            if (est > best) best = est;
+          });
+        });
+      });
+      return best;
+    }
+
+    function allLoggedExercises() {
+      const seen = {};
+      workouts.forEach(function (w) { w.exercises.forEach(function (e) { seen[e.name] = true; }); });
+      return Object.keys(seen);
+    }
+
+    // --- Routines ---
+    const routineList = document.getElementById('routineList');
+    const routineEditor = document.getElementById('routineEditor');
+    const rtName = document.getElementById('rtName');
+    const rtExercises = document.getElementById('rtExercises');
+    const newRoutineBtn = document.getElementById('newRoutineBtn');
+    const rtAddExercise = document.getElementById('rtAddExercise');
+    const rtSave = document.getElementById('rtSave');
+    const rtCancel = document.getElementById('rtCancel');
+    let editingRoutineIndex = null;
+
+    // Reps field takes either a plain number ("8") or a range ("8-12") — typed as one string,
+    // parsed on save (see rtSave below). Kept as one input rather than adding a second box so
+    // the row doesn't get any more cramped on a phone screen than it already is.
+    function exerciseRow(ex) {
+      ex = ex || { name: '', sets: 3, reps: 8, dumbbell: false };
+      const repsText = (ex.repsMax && ex.repsMax !== ex.reps) ? (ex.reps + '-' + ex.repsMax) : String(ex.reps);
+      return '<div class="exRow" style="margin-bottom:8px">' +
+        '<div style="display:flex;gap:6px">' +
+        '<input class="exName" placeholder="Exercise" value="' + (ex.name || '').replace(/"/g, '&quot;') + '" style="flex:2">' +
+        '<input class="exSets" type="number" placeholder="Sets" value="' + ex.sets + '" style="flex:1">' +
+        '<input class="exReps" type="text" inputmode="numeric" placeholder="Reps or 8-12" value="' + repsText + '" style="flex:1">' +
+        '<button class="delEx grey" type="button" style="flex:0 0 36px">×</button></div>' +
+        // Explicit per-exercise flag rather than guessing off the exercise name containing
+        // "dumbbell" — some dumbbell moves are single-arm and shouldn't be doubled, so this has
+        // to be a real choice, not a name-matching heuristic. Checked once here, remembered
+        // everywhere that exercise's ranking gets computed (see isDumbbellExercise below).
+        '<label style="font-size:12px;display:flex;align-items:center;gap:5px;margin-top:5px;color:var(--text-dim)">' +
+        '<input type="checkbox" class="exDumbbell"' + (ex.dumbbell ? ' checked' : '') + '> Logged per dumbbell — double the weight for ranking' +
+        '</label></div>';
+    }
+
+    function showRoutineList() {
+      if (!routines.length) {
+        routineList.innerHTML = emptyStateHTML('No routines yet — tap + New routine to build one.');
+        return;
+      }
+      routineList.innerHTML = routines.map(function (r, i) {
+        return '<div class="row"><span>' + esc(r.name) + '</span><span>' + r.exercises.length +
+          ' exercises <button class="editRt" data-i="' + i + '">✎</button><button class="delRt" data-i="' + i + '">×</button></span></div>';
+      }).join('');
+    }
+
+    newRoutineBtn.addEventListener('click', function () {
+      editingRoutineIndex = null;
+      rtName.value = '';
+      rtExercises.innerHTML = exerciseRow();
+      routineEditor.style.display = 'block';
+    });
+
+    rtAddExercise.addEventListener('click', function () {
+      rtExercises.insertAdjacentHTML('beforeend', exerciseRow());
+    });
+
+    rtExercises.addEventListener('click', function (ev) {
+      if (!ev.target.classList.contains('delEx')) return;
+      ev.target.closest('.exRow').remove();
+    });
+
+    rtCancel.addEventListener('click', function () {
+      editingRoutineIndex = null;
+      routineEditor.style.display = 'none';
+    });
+
+    rtSave.addEventListener('click', function () {
+      if (!rtName.value.trim()) { statusEl.textContent = 'Give the routine a name'; return; }
+      const exercises = [];
+      rtExercises.querySelectorAll('.exRow').forEach(function (row) {
+        const name = row.querySelector('.exName').value.trim();
+        if (!name) return;
+        // "8-12" (or "8–12" with an en dash) splits into a min/max; a plain "8" stays a fixed
+        // target same as before — repsMax is only set when a real range was typed, so old
+        // routines and the common case both keep meaning exactly what they always meant.
+        const repsParts = row.querySelector('.exReps').value.trim().split(/[-–]/)
+          .map(function (s) { return Number(s.trim()); })
+          .filter(function (n) { return n > 0; });
+        const repsMin = repsParts.length ? Math.min.apply(null, repsParts) : 8;
+        const repsMax = repsParts.length > 1 ? Math.max.apply(null, repsParts) : null;
+        const ex = {
+          name: name,
+          sets: Math.max(1, Number(row.querySelector('.exSets').value) || 3),
+          reps: Math.max(1, repsMin)
+        };
+        if (repsMax && repsMax !== ex.reps) ex.repsMax = repsMax;
+        if (row.querySelector('.exDumbbell').checked) ex.dumbbell = true;
+        exercises.push(ex);
+      });
+      if (!exercises.length) { statusEl.textContent = 'Add at least one exercise'; return; }
+      const routine = { name: rtName.value.trim(), exercises: exercises };
+      if (editingRoutineIndex !== null) routines[editingRoutineIndex] = routine;
+      else routines.push(routine);
+      saveRoutines();
+      showRoutineList();
+      populateRoutinePick();
+      routineEditor.style.display = 'none';
+      statusEl.textContent = 'Saved ' + routine.name;
+    });
+
+    routineList.addEventListener('click', function (ev) {
+      const i = Number(ev.target.dataset.i);
+      if (ev.target.classList.contains('delRt')) {
+        const removed = routines[i];
+        routines.splice(i, 1);
+        saveRoutines();
+        showRoutineList();
+        populateRoutinePick();
+        showUndo('Deleted ' + removed.name, function () {
+          routines.push(removed);
+          saveRoutines();
+          showRoutineList();
+          populateRoutinePick();
+        });
+        return;
+      }
+      if (ev.target.classList.contains('editRt')) {
+        editingRoutineIndex = i;
+        const r = routines[i];
+        rtName.value = r.name;
+        rtExercises.innerHTML = r.exercises.map(exerciseRow).join('');
+        routineEditor.style.display = 'block';
+      }
+    });
+
+    // --- Log a workout ---
+    const wRoutinePick = document.getElementById('wRoutinePick');
+    const wExerciseLog = document.getElementById('wExerciseLog');
+    const wFinish = document.getElementById('wFinish');
+
+    function populateRoutinePick() {
+      const current = wRoutinePick.value;
+      wRoutinePick.innerHTML = '<option value="">Choose a routine</option>' +
+        routines.map(function (r, i) { return '<option value="' + i + '">' + esc(r.name) + '</option>'; }).join('');
+      wRoutinePick.value = current;
+    }
+
+    // A drop set gets its own row markup — indented, with a small "↳ drop" tag — so it reads as
+    // visually different from a normal set at a glance, not just a data flag you'd never see.
+    // The `data-drop` attribute is what wFinish() reads back out when it saves the workout.
+    function setRowHtml(drop) {
+      const tag = drop ? '<span class="dropTag">↳ drop</span>' : '';
+      return '<div class="setRow' + (drop ? ' drop' : '') + '" data-drop="' + (drop ? '1' : '0') +
+        '" style="display:flex;gap:6px;margin-bottom:6px' + (drop ? ';margin-left:20px' : '') + '">' +
+        tag +
+        '<input type="number" class="setWeight" placeholder="lbs" style="flex:1">' +
+        '<input type="number" class="setReps" placeholder="reps" style="flex:1">' +
+        '<button class="delSet grey" type="button" style="flex:0 0 36px">×</button></div>';
+    }
+
+    function formatSets(sets) {
+      return sets.map(function (s) {
+        const base = s.weight + '×' + s.reps;
+        return s.drop ? '↳' + base : base;
+      }).join(', ');
+    }
+
+    wRoutinePick.addEventListener('change', function () {
+      if (wRoutinePick.value === '') {
+        wExerciseLog.innerHTML = '';
+        wFinish.style.display = 'none';
+        document.getElementById('restControls').style.display = 'none';
+        endWorkoutTimer();
+        return;
+      }
+      const routine = routines[Number(wRoutinePick.value)];
+      wExerciseLog.innerHTML = routine.exercises.map(function (ex) {
+        const last = lastSetsFor(ex.name);
+        const lastText = last ? formatSets(last) : 'No history yet';
+        let rows = '';
+        for (let i = 0; i < ex.sets; i++) rows += setRowHtml(false);
+        const goalNote = goalReminderFor(ex.name);
+        const repsLabel = (ex.repsMax && ex.repsMax !== ex.reps) ? (ex.reps + '–' + ex.repsMax) : ex.reps;
+        const dumbbellNote = ex.dumbbell ? 'Log one dumbbell\'s weight — doubled automatically for ranking.' : '';
+        return '<div class="card wExCard" data-name="' + ex.name.replace(/"/g, '&quot;') + '">' +
+          '<b>' + esc(ex.name) + '</b>' +
+          '<div class="sub">Last time: ' + lastText + '</div>' +
+          '<div class="sub">Target: ' + ex.sets + ' x ' + repsLabel + '</div>' +
+          (dumbbellNote ? '<div class="sub">' + dumbbellNote + '</div>' : '') +
+          (goalNote ? '<div class="sub" style="color:var(--accent)">' + goalNote + '</div>' : '') +
+          '<div class="setRows">' + rows + '</div>' +
+          '<button class="addSetBtn grey" type="button">+ Add set</button> ' +
+          '<button class="addDropBtn grey" type="button">+ Add drop set</button>' +
+          '</div>';
+      }).join('');
+      wFinish.style.display = 'block';
+      document.getElementById('restControls').style.display = 'block';
+      if (!activeWorkout || activeWorkout.routineName !== routine.name) startWorkoutTimer(routine.name);
+    });
+
+    wExerciseLog.addEventListener('click', function (ev) {
+      if (ev.target.classList.contains('addSetBtn') || ev.target.classList.contains('addDropBtn')) {
+        const rowsDiv = ev.target.closest('.wExCard').querySelector('.setRows');
+        rowsDiv.insertAdjacentHTML('beforeend', setRowHtml(ev.target.classList.contains('addDropBtn')));
+      }
+      if (ev.target.classList.contains('delSet')) {
+        ev.target.closest('.setRow').remove();
+      }
+    });
+
+    // Enter on weight jumps to reps in the same set; Enter on reps jumps to the NEXT set's
+    // weight box, adding a fresh set row first if you were already on the last one — "set after
+    // set" without reaching for the mouse, the flow requested 2026-08-25. Delegated on the
+    // container (not attached per-row) because rows get added/removed dynamically.
+    wExerciseLog.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter') return;
+      if (ev.target.classList.contains('setWeight')) {
+        ev.preventDefault();
+        const reps = ev.target.closest('.setRow').querySelector('.setReps');
+        if (reps) reps.focus();
+      } else if (ev.target.classList.contains('setReps')) {
+        ev.preventDefault();
+        const card = ev.target.closest('.wExCard');
+        const rows = Array.from(card.querySelectorAll('.setRow'));
+        const idx = rows.indexOf(ev.target.closest('.setRow'));
+        if (idx === rows.length - 1) {
+          card.querySelector('.addSetBtn').click();
+          const newRows = card.querySelectorAll('.setRow');
+          newRows[newRows.length - 1].querySelector('.setWeight').focus();
+        } else {
+          rows[idx + 1].querySelector('.setWeight').focus();
+        }
+      }
+    });
+
+    wFinish.addEventListener('click', function () {
+      const exercises = [];
+      wExerciseLog.querySelectorAll('.wExCard').forEach(function (card) {
+        const sets = [];
+        card.querySelectorAll('.setRow').forEach(function (row) {
+          const weight = Number(row.querySelector('.setWeight').value);
+          const reps = Number(row.querySelector('.setReps').value);
+          // A blank weight box means BODYWEIGHT (pull-ups, dips, planks), not
+          // "no set" — reps is what makes a set real. This used to read
+          // `if (weight && reps)`, and since Number('') is 0 and 0 is falsy,
+          // every bodyweight set was silently dropped: log three sets of
+          // pull-ups, hit Finish, and get "Log at least one set before
+          // finishing" with nothing saved. Found by the 2026-08-26 sweep.
+          if (reps > 0) sets.push({ weight: weight || 0, reps: reps, drop: row.dataset.drop === '1' });
+        });
+        if (sets.length) exercises.push({ name: card.dataset.name, sets: sets });
+      });
+      if (!exercises.length) { statusEl.textContent = 'Log at least one set before finishing'; return; }
+      // Which routine was this? Prefer the name recorded when the workout
+      // started — it survives the routine being renamed or deleted mid-session.
+      // The old code did routines[Number(wRoutinePick.value)], and Number('')
+      // is 0 (not NaN), so a blanked picker quietly filed the session under
+      // whichever routine sat first in the list, and an empty list threw on
+      // `routine.name` and lost every set just typed in.
+      const picked = wRoutinePick.value === '' ? null : routines[Number(wRoutinePick.value)];
+      const routineName =
+        (activeWorkout && activeWorkout.routineName) ||
+        (picked && picked.name) ||
+        'Unnamed workout';
+      workouts.push({ date: todayKey(), routine: routineName, exercises: exercises });
+      saveWorkouts();
+      wRoutinePick.value = '';
+      wExerciseLog.innerHTML = '';
+      wFinish.style.display = 'none';
+      document.getElementById('restControls').style.display = 'none';
+      endWorkoutTimer();
+      statusEl.textContent = 'Workout saved — ' + exercises.length + ' exercises logged';
+      showRanks();
+    });
+
+    // --- Active workout bar: duration timer + rest timer ---
+    // Two separate asks (2026-08-25) that hit the same platform wall: a bar that's truly pinned
+    // to the top of the PHONE (like Apple Music's now-playing bar) is iOS's Live Activities
+    // API — ActivityKit — which is a native-app-only feature with zero web equivalent, at all.
+    // No amount of code here can create that. What a home-screen web app CAN do: keep its own
+    // bar pinned to the top of ITS OWN screen while you're inside it, and make a best effort at
+    // reaching you when you're not — vibration + a beep synthesized in-browser (no audio file to
+    // bundle) always work while the tab is alive, and a real Notification when you've allowed
+    // them, which iOS has supported for installed home-screen apps since 16.4. That's the honest
+    // ceiling this is built to, not a promise of a true lock-screen countdown.
+    const activeWorkoutBar = document.getElementById('activeWorkoutBar');
+    const awbInfo = document.getElementById('awbInfo');
+    const awbControls = document.getElementById('awbControls');
+    const restControls = document.getElementById('restControls');
+    let activeWorkout = loadJSON('activeWorkout', null);
+    let restEndsAt = Number(localStorage.getItem('restEndsAt')) || null;
+
+    function saveActiveWorkout() {
+      if (activeWorkout) store('activeWorkout', activeWorkout);
+      else localStorage.removeItem('activeWorkout');
+    }
+    function saveRestEndsAt() {
+      if (restEndsAt) store('restEndsAt', String(restEndsAt));
+      else localStorage.removeItem('restEndsAt');
+    }
+
+    function formatClock(totalSeconds) {
+      const s = Math.max(0, Math.round(totalSeconds));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return m + ':' + (r < 10 ? '0' : '') + r;
+    }
+
+    // A short two-tone beep built with WebAudio instead of a bundled sound file — keeps this
+    // app's one-dependency-free-HTML-file rule (same reasoning as the hero banner's particle
+    // field). Wrapped in try/catch because Safari can refuse to start an AudioContext outside
+    // a direct user gesture in some contexts; a missed beep isn't worth crashing the timer over.
+    function playBeep() {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new Ctx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = 880;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+      } catch (e) { /* no audio available on this device — silent no-op, not fatal */ }
+    }
+
+    function notifyRestOver() {
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      playBeep();
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Rest over', { body: 'Back to it.' });
+      }
+    }
+
+    function startRest(seconds) {
+      restEndsAt = Date.now() + seconds * 1000;
+      saveRestEndsAt();
+      // Ask for notification permission from inside this click handler specifically — a real
+      // user gesture — rather than later when the timer actually ends, since Safari can refuse
+      // a permission prompt that isn't triggered directly by a tap.
+      if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+      renderActiveBar();
+    }
+    function cancelRest() {
+      restEndsAt = null;
+      saveRestEndsAt();
+      renderActiveBar();
+    }
+
+    function startWorkoutTimer(routineName) {
+      activeWorkout = { routineName: routineName, startedAt: Date.now() };
+      saveActiveWorkout();
+      renderActiveBar();
+    }
+    function endWorkoutTimer() {
+      activeWorkout = null;
+      restEndsAt = null;
+      saveActiveWorkout();
+      saveRestEndsAt();
+      renderActiveBar();
+    }
+
+    function goToLogView() {
+      document.querySelector('.mode[data-section="fitness"]').click();
+      document.querySelector('.wtab[data-wview="wLogSub"]').click();
+      // If iOS reloaded the tab from scratch while it was backgrounded, the routine picker
+      // won't remember what was selected even though activeWorkout survived in localStorage —
+      // re-select it so tapping the bar actually gets you back into logging, not a blank picker.
+      // Note this can't recover any set weights/reps you'd already typed but not saved; only
+      // the routine choice and the running clock survive a real reload.
+      if (activeWorkout && wRoutinePick.value === '') {
+        const idx = routines.findIndex(function (r) { return r.name === activeWorkout.routineName; });
+        if (idx !== -1) {
+          wRoutinePick.value = String(idx);
+          wRoutinePick.dispatchEvent(new Event('change'));
+        }
+      }
+    }
+
+    function renderActiveBar() {
+      // Catches a rest countdown finishing even if the tab was suspended in the background —
+      // checked on every render, which runs on a 1s tick AND on visibilitychange/focus, so
+      // returning to the app fires the alert immediately instead of missing it silently.
+      if (restEndsAt && Date.now() >= restEndsAt) {
+        restEndsAt = null;
+        saveRestEndsAt();
+        notifyRestOver();
+      }
+      if (!activeWorkout) {
+        activeWorkoutBar.classList.remove('show');
+        document.body.classList.remove('hasActiveBar');
+        return;
+      }
+      document.body.classList.add('hasActiveBar');
+      activeWorkoutBar.classList.add('show');
+      const elapsed = (Date.now() - activeWorkout.startedAt) / 1000;
+      awbInfo.textContent = formatClock(elapsed) + ' · ' + activeWorkout.routineName;
+      if (restEndsAt) {
+        const remaining = (restEndsAt - Date.now()) / 1000;
+        awbControls.innerHTML = '<span>Rest ' + formatClock(remaining) + '</span><button id="awbCancelRest" type="button">✕</button>';
+      } else {
+        awbControls.innerHTML = '<button id="awbResumeBtn" type="button">Resume ▸</button>';
+      }
+    }
+
+    activeWorkoutBar.addEventListener('click', function (ev) {
+      if (ev.target.id === 'awbCancelRest') { cancelRest(); return; }
+      goToLogView();
+    });
+    restControls.addEventListener('click', function (ev) {
+      if (!ev.target.classList.contains('restQuick')) return;
+      startRest(Number(ev.target.dataset.secs));
+    });
+
+    setInterval(renderActiveBar, 1000);
+    document.addEventListener('visibilitychange', renderActiveBar);
+    window.addEventListener('focus', renderActiveBar);
+    renderActiveBar();
+
+    // --- Streak ---
+    // A logged day keeps the streak alive as long as the gap to the next logged day is 3 calendar
+    // days or less (today, +1, +2 — i.e. "at most two rest days in between"). A gap of 4+ breaks
+    // the chain. Walking the sorted list of unique workout dates once gives both the length of
+    // every chain and, in the same pass, the longest one ever (bestStreak).
+    const wSexNote = document.getElementById('wSexNote');
+    const wRankList = document.getElementById('wRankList');
+    const streakHeadline = document.getElementById('streakHeadline');
+    const streakSub = document.getElementById('streakSub');
+    const streakCal = document.getElementById('streakCal');
+    const streakIcon = document.getElementById('streakIcon');
+    let calMonthOffset = 0;
+
+    // STREAK_ICON_ACTIVE/INACTIVE now live up near EMPTY_STATE_ICON, not here — moved so the
+    // food-logging streak on Today (which runs at page load) can use them too without hitting
+    // the temporal-dead-zone bug this file has hit twice before. Nothing else about them changed.
+
+    function workoutDateSet() {
+      const seen = {};
+      workouts.forEach(function (w) { seen[w.date] = true; });
+      return seen;
+    }
+
+    function computeStreak() {
+      const dates = Object.keys(workoutDateSet()).sort();
+      if (!dates.length) return { count: 0, best: 0, active: false };
+      let count = 1, best = 1;
+      for (let i = 1; i < dates.length; i++) {
+        const gap = dayNumber(dates[i]) - dayNumber(dates[i - 1]);
+        count = (gap <= 3) ? count + 1 : 1;
+        if (count > best) best = count;
+      }
+      const lastDate = dates[dates.length - 1];
+      const sinceLast = dayNumber(todayKey()) - dayNumber(lastDate);
+      const active = sinceLast <= 3;
+      return { count: active ? count : 0, best: best, active: active, lastDate: lastDate, sinceLast: sinceLast };
+    }
+
+    function renderCalendar(monthOffset, marked) {
+      const base = new Date();
+      base.setDate(1);
+      base.setMonth(base.getMonth() + monthOffset);
+      const year = base.getFullYear(), month = base.getMonth();
+      const first = new Date(year, month, 1);
+      const days = new Date(year, month + 1, 0).getDate();
+      const startPad = (first.getDay() + 6) % 7; // Monday-first grid
+      const label = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      let cells = '';
+      for (let i = 0; i < startPad; i++) cells += '<div></div>';
+      for (let d = 1; d <= days; d++) {
+        const key = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        const hit = marked[key];
+        const today = key === todayKey();
+        cells += '<div style="aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;' +
+          (hit ? 'background:var(--accent);color:var(--on-accent);' : 'background:var(--track);color:var(--text-dim);') +
+          (today ? 'box-shadow:0 0 0 1px var(--accent) inset;' : '') + '">' + d + '</div>';
+      }
+      return '<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px">' +
+        '<button class="grey calPrev" type="button">‹</button><b style="font-size:13px">' + label + '</b>' +
+        '<button class="grey calNext" type="button">›</button></div>' +
+        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">' + cells + '</div>';
+    }
+
+    function showStreak() {
+      const s = computeStreak();
+      streakHeadline.textContent = s.count ? (s.count + '-day streak') : 'No active streak';
+      streakSub.textContent = s.best ? ('Best: ' + s.best + (s.active ? '' : ' — log a workout today to start a new one') + (s.best !== s.count ? '' : '')) : '';
+      streakIcon.innerHTML = s.count ? STREAK_ICON_ACTIVE : STREAK_ICON_INACTIVE;
+      streakCal.innerHTML = renderCalendar(calMonthOffset, workoutDateSet());
+    }
+
+    streakCal.addEventListener('click', function (ev) {
+      if (ev.target.classList.contains('calPrev')) { calMonthOffset--; showStreak(); }
+      if (ev.target.classList.contains('calNext')) { calMonthOffset++; showStreak(); }
+    });
+
+    // --- Body map ---
+    // Keyword rules, checked by substring against the exercise name (same approach as
+    // standardFor). An exercise can hit more than one muscle — a deadlift trains back, hamstrings
+    // AND glutes, so it contributes to all three regions on the diagram.
+    const MUSCLE_RULES = [
+      { kw: ['bench', 'fly', 'pec', 'push-up', 'pushup', 'dip'], muscle: 'chest' },
+      { kw: ['overhead', 'shoulder press', 'ohp', 'lateral raise', 'delt', 'arnold'], muscle: 'shoulders' },
+      { kw: ['curl'], muscle: 'biceps' },
+      { kw: ['tricep', 'pushdown', 'skullcrusher', 'close-grip', 'dip'], muscle: 'triceps' },
+      { kw: ['row', 'pulldown', 'pull-up', 'pullup', 'deadlift', 'lat '], muscle: 'back' },
+      { kw: ['crunch', 'sit-up', 'situp', 'plank', 'leg raise'], muscle: 'abs' },
+      { kw: ['squat', 'leg press', 'lunge', 'leg extension'], muscle: 'quads' },
+      { kw: ['deadlift', 'leg curl', 'romanian', 'rdl', 'hamstring'], muscle: 'hamstrings' },
+      { kw: ['squat', 'deadlift', 'hip thrust', 'glute'], muscle: 'glutes' },
+      { kw: ['calf'], muscle: 'calves' }
+    ];
+    function musclesFor(name) {
+      const n = name.toLowerCase();
+      const hit = {};
+      MUSCLE_RULES.forEach(function (r) {
+        if (r.kw.some(function (k) { return n.indexOf(k) !== -1; })) hit[r.muscle] = true;
+      });
+      return Object.keys(hit);
+    }
+
+    // Average of every RANKED exercise's score that trains a given muscle — unranked exercises
+    // (no published standard) don't have a score to contribute, so they're skipped here even
+    // though they still appear in the flat list below the diagram.
+    function computeMuscleScores(bw) {
+      const sums = {}, counts = {};
+      allLoggedExercises().forEach(function (name) {
+        const thresholds = standardFor(name);
+        if (!thresholds) return;
+        const r = rankRatio(bestEver(name) / bw, thresholds);
+        musclesFor(name).forEach(function (m) {
+          sums[m] = (sums[m] || 0) + r.score;
+          counts[m] = (counts[m] || 0) + 1;
+        });
+      });
+      const scores = {};
+      Object.keys(sums).forEach(function (m) { scores[m] = Math.round(sums[m] / counts[m]); });
+      return scores;
+    }
+
+    function muscleFill(scores, muscle) {
+      const score = scores[muscle];
+      if (score == null) return 'fill:var(--border)';
+      const t = Math.max(0, Math.min(1, score / 100));
+      return 'fill:var(--accent);fill-opacity:' + (0.25 + 0.65 * t).toFixed(2);
+    }
+
+    // MADE MORE MUSCULAR 2026-08-22, same day as the redraw above — Owen's feedback on that
+    // version: too thin, wants to actually see the muscles he's looking at, not flat inset
+    // patches on a mannequin. Two changes, staged and checked separately same as before:
+    //   1. Broadened the whole armature — wider shoulders, a tighter waist taper, thicker limbs
+    //      with the muscle bulge built into the outline itself, not just the color on top. This
+    //      reintroduced the exact elbow-notch bug from the first redraw (two shapes not quite
+    //      meeting) on the new, bigger arm — caught by rendering the silhouette alone again
+    //      before adding anything, same check, same fix (one continuous limb path).
+    //   2. Rebuilt every muscle-region shape as an actual muscle belly instead of a flat patch —
+    //      a bicep with a real peak, a rounded deltoid cap, pecs with a fold line, a linea-alba
+    //      line down the abs with the obliques as their own sweeping shape, a lat "V" wide enough
+    //      to read as a lat, a teardrop quad with the inner vastus-medialis bulge near the knee,
+    //      a diamond calf. Added thin dark separation strokes between adjacent muscles (bicep vs.
+    //      the arm's own outline, traps vs. lats, the two glute halves) so a muscle reads as its
+    //      own shape even before any score colors it — confirmed this actually works by rendering
+    //      the zero-data case: the body reads as defined from the linework alone, blue or not.
+    // Checked in `Projects/Calorie App/tests/stage3b_full.js` before this replaced the thinner
+    // version: full color range, zero data, and a 150 score (opacity still caps) all render
+    // clean, same required checks as every version of this component so far.
+    function bodySvg(scores) {
+      const bg = 'style="fill:var(--track)"';
+      function region(muscle, shape) {
+        return '<g class="muscleRegion" data-muscle="' + muscle + '" style="cursor:pointer">' + shape + '</g>';
+      }
+      const sep = 'stroke:var(--border);stroke-width:1;fill:none;opacity:0.55';
+      // ONE continuous silhouette, broader/thicker than the first redraw — a real athletic build
+      // rather than a thin mannequin — checked standalone (no muscle colors) before anything was
+      // layered on top, same discipline as the first redraw.
+      function armature() {
+        return '<path d="M65,8 Q65,2 80,2 Q95,2 95,8 Q98,18 92,28 Q86,37 80,37 Q74,37 68,28 Q62,18 65,8 Z" ' + bg + '/>' +
+          '<path d="M68,30 L92,30 L95,50 L65,50 Z" ' + bg + '/>' +
+          '<path d="M38,50 L122,50 L114,86 Q117,110 106,134 Q106,156 101,176 L104,198 L56,198 L59,176 ' +
+          'Q54,156 54,134 Q43,110 46,86 Z" ' + bg + '/>' +
+          '<path d="M38,54 Q20,60 12,78 Q6,98 12,116 Q15,128 22,130 Q26,129 27,124 Q24,148 27,166 ' +
+          'Q29,180 36,186 Q42,187 43,180 Q40,164 41,146 Q39,130 34,120 Q31,106 33,90 ' +
+          'Q34,76 40,66 Q37,60 42,54 Z" ' + bg + '/>' +
+          '<path d="M122,54 Q140,60 148,78 Q154,98 148,116 Q145,128 138,130 Q134,129 133,124 Q136,148 133,166 ' +
+          'Q131,180 124,186 Q118,187 117,180 Q120,164 119,146 Q121,130 126,120 Q129,106 127,90 ' +
+          'Q126,76 120,66 Q123,60 118,54 Z" ' + bg + '/>' +
+          '<path d="M56,198 Q48,224 51,254 Q53,272 60,286 Q57,306 55,326 Q54,342 60,356 Q65,360 69,356 ' +
+          'Q72,342 70,326 Q72,306 73,286 Q76,266 74,244 Q74,218 70,198 Z" ' + bg + '/>' +
+          '<path d="M104,198 Q112,224 109,254 Q107,272 100,286 Q103,306 105,326 Q106,342 100,356 ' +
+          'Q95,360 91,356 Q88,342 90,326 Q88,306 87,286 Q84,266 86,244 Q86,218 90,198 Z" ' + bg + '/>' +
+          '<ellipse cx="63" cy="364" rx="9" ry="6" ' + bg + '/><ellipse cx="97" cy="364" rx="9" ry="6" ' + bg + '/>';
+      }
+      const front =
+        '<svg viewBox="0 0 160 385" style="width:48%">' +
+        armature() +
+        region('shoulders',
+          '<path d="M38,54 Q22,58 14,72 Q10,84 16,92 Q22,96 28,90 Q33,82 36,72 Q39,62 44,56 Z" style="' + muscleFill(scores, 'shoulders') + '"/>' +
+          '<path d="M122,54 Q138,58 146,72 Q150,84 144,92 Q138,96 132,90 Q127,82 124,72 Q121,62 116,56 Z" style="' + muscleFill(scores, 'shoulders') + '"/>') +
+        region('chest',
+          '<path d="M46,60 Q40,76 46,92 Q51,102 64,100 Q74,96 74,80 Q73,66 64,60 Z" style="' + muscleFill(scores, 'chest') + '"/>' +
+          '<path d="M114,60 Q120,76 114,92 Q109,102 96,100 Q86,96 86,80 Q87,66 96,60 Z" style="' + muscleFill(scores, 'chest') + '"/>' +
+          '<path d="M48,90 Q56,98 64,96" style="' + sep + '"/><path d="M112,90 Q104,98 96,96" style="' + sep + '"/>') +
+        region('abs',
+          '<rect x="65" y="100" width="13" height="15" rx="3" style="' + muscleFill(scores, 'abs') + '"/>' +
+          '<rect x="82" y="100" width="13" height="15" rx="3" style="' + muscleFill(scores, 'abs') + '"/>' +
+          '<rect x="65" y="118" width="13" height="15" rx="3" style="' + muscleFill(scores, 'abs') + '"/>' +
+          '<rect x="82" y="118" width="13" height="15" rx="3" style="' + muscleFill(scores, 'abs') + '"/>' +
+          '<rect x="66" y="136" width="12" height="15" rx="3" style="' + muscleFill(scores, 'abs') + '"/>' +
+          '<rect x="82" y="136" width="12" height="15" rx="3" style="' + muscleFill(scores, 'abs') + '"/>' +
+          '<path d="M80,100 L80,151" style="' + sep + '"/>' +
+          '<path d="M56,98 Q50,122 56,148 Q59,158 66,158 Q61,136 62,98 Z" style="' + muscleFill(scores, 'abs') + '"/>' +
+          '<path d="M104,98 Q110,122 104,148 Q101,158 94,158 Q99,136 98,98 Z" style="' + muscleFill(scores, 'abs') + '"/>') +
+        region('biceps',
+          '<path d="M15,80 Q11,96 16,112 Q19,122 26,122 Q31,118 28,104 Q26,92 28,80 Q22,75 15,80 Z" style="' + muscleFill(scores, 'biceps') + '"/>' +
+          '<path d="M145,80 Q149,96 144,112 Q141,122 134,122 Q129,118 132,104 Q134,92 132,80 Q138,75 145,80 Z" style="' + muscleFill(scores, 'biceps') + '"/>' +
+          '<path d="M16,84 Q13,98 17,110" style="' + sep + '"/><path d="M144,84 Q147,98 143,110" style="' + sep + '"/>') +
+        region('quads',
+          '<path d="M55,204 Q48,230 51,258 Q53,276 60,284 Q67,282 67,262 Q67,232 64,204 Z" style="' + muscleFill(scores, 'quads') + '"/>' +
+          '<path d="M105,204 Q112,230 109,258 Q107,276 100,284 Q93,282 93,262 Q93,232 96,204 Z" style="' + muscleFill(scores, 'quads') + '"/>' +
+          '<path d="M56,258 Q59,270 65,272 Q63,262 62,250 Z" style="' + muscleFill(scores, 'quads') + '"/>' +
+          '<path d="M104,258 Q101,270 95,272 Q97,262 98,250 Z" style="' + muscleFill(scores, 'quads') + '"/>' +
+          '<path d="M58,214 Q54,240 57,264" style="' + sep + '"/><path d="M102,214 Q106,240 103,264" style="' + sep + '"/>') +
+        '<text x="80" y="379" text-anchor="middle" style="font-size:11px;fill:var(--text-dim)">Front</text>' +
+        '</svg>';
+      const back =
+        '<svg viewBox="0 0 160 385" style="width:48%">' +
+        armature() +
+        region('shoulders',
+          '<path d="M38,54 Q22,58 14,72 Q10,84 16,92 Q22,96 28,90 Q33,82 36,72 Q39,62 44,56 Z" style="' + muscleFill(scores, 'shoulders') + '"/>' +
+          '<path d="M122,54 Q138,58 146,72 Q150,84 144,92 Q138,96 132,90 Q127,82 124,72 Q121,62 116,56 Z" style="' + muscleFill(scores, 'shoulders') + '"/>') +
+        region('back',
+          '<path d="M64,54 L96,54 L86,88 L80,100 L74,88 Z" style="' + muscleFill(scores, 'back') + '"/>' +
+          '<path d="M52,62 Q42,86 46,116 Q50,142 64,150 Q73,142 69,112 Q66,86 60,62 Z" style="' + muscleFill(scores, 'back') + '"/>' +
+          '<path d="M108,62 Q118,86 114,116 Q110,142 96,150 Q87,142 91,112 Q94,86 100,62 Z" style="' + muscleFill(scores, 'back') + '"/>' +
+          '<path d="M66,60 Q58,86 62,112" style="' + sep + '"/><path d="M94,60 Q102,86 98,112" style="' + sep + '"/>') +
+        region('triceps',
+          '<path d="M15,80 Q11,96 16,112 Q19,122 26,122 Q31,118 28,104 Q26,92 28,80 Q22,75 15,80 Z" style="' + muscleFill(scores, 'triceps') + '"/>' +
+          '<path d="M145,80 Q149,96 144,112 Q141,122 134,122 Q129,118 132,104 Q134,92 132,80 Q138,75 145,80 Z" style="' + muscleFill(scores, 'triceps') + '"/>') +
+        region('glutes',
+          '<path d="M55,200 Q49,216 57,228 Q66,235 74,225 Q76,210 70,200 Z" style="' + muscleFill(scores, 'glutes') + '"/>' +
+          '<path d="M105,200 Q111,216 103,228 Q94,235 86,225 Q84,210 90,200 Z" style="' + muscleFill(scores, 'glutes') + '"/>' +
+          '<path d="M74,204 Q77,214 74,224" style="' + sep + '"/><path d="M86,204 Q83,214 86,224" style="' + sep + '"/>') +
+        region('hamstrings',
+          '<path d="M57,230 Q52,252 55,272 Q57,282 64,282 Q68,274 65,254 Q65,236 62,226 Z" style="' + muscleFill(scores, 'hamstrings') + '"/>' +
+          '<path d="M103,230 Q108,252 105,272 Q103,282 96,282 Q92,274 95,254 Q95,236 98,226 Z" style="' + muscleFill(scores, 'hamstrings') + '"/>') +
+        region('calves',
+          '<path d="M57,296 Q52,312 56,330 Q59,340 65,338 Q69,326 66,308 Q65,298 62,290 Z" style="' + muscleFill(scores, 'calves') + '"/>' +
+          '<path d="M103,296 Q108,312 104,330 Q101,340 95,338 Q91,326 94,308 Q95,298 98,290 Z" style="' + muscleFill(scores, 'calves') + '"/>') +
+        '<text x="80" y="379" text-anchor="middle" style="font-size:11px;fill:var(--text-dim)">Back</text>' +
+        '</svg>';
+      return '<div style="display:flex;justify-content:space-between;gap:8px">' + front + back + '</div>';
+    }
+
+    let muscleFilter = null;
+
+    // --- Goals ---
+    let goals = loadJSON('goals', []);
+    function saveGoals() { store('goals', goals); }
+
+    // Both a "hit this weight for these reps" goal and a "hit this weight for a single by this
+    // date" goal reduce to the same math: convert the target into an implied 1RM with Epley (a
+    // single IS its own 1RM, so reps=1 just returns the weight unchanged) and compare against
+    // your current best estimated 1RM for that exercise — the same number the ranking uses.
+    function goalProgress(g) {
+      const factor = isDumbbellExercise(g.name) ? 2 : 1;
+      const targetOneRM = epley1RM(g.weight * factor, g.reps);
+      const current = bestEver(g.name);
+      const pct = targetOneRM ? Math.min(100, Math.round(current / targetOneRM * 100)) : 0;
+      const daysLeft = g.date ? Math.round((new Date(g.date) - new Date(todayKey())) / 86400000) : null;
+      return { targetOneRM: targetOneRM, current: current, pct: pct, daysLeft: daysLeft };
+    }
+
+    // Shown inline on the Log workout card for this exercise, so the goal is visible right where
+    // you'd act on it — not just filed away on a separate tab you'd have to remember to check.
+    function goalReminderFor(name) {
+      const g = goals.find(function (x) { return x.name.toLowerCase() === name.toLowerCase(); });
+      if (!g) return '';
+      const p = goalProgress(g);
+      return 'Goal: ' + g.weight + '×' + g.reps + (g.date ? ' by ' + g.date : '') +
+        ' — you\'re at ' + Math.round(p.current) + ' lb est., ' + p.pct + '% there';
+    }
+
+    function showRanks() {
+      showStreak();
+      wSexNote.innerHTML = liftSex
+        ? ('Using ' + (liftSex === 'm' ? 'male' : 'female') + ' standards for the lifts that have them. Set from the Weight tab.')
+        : 'No standards set yet — pick your gender in <b>Eating → Weight → Settings → Work out your targets</b> to turn on rankings.';
+      const bw = currentBodyweight();
+      document.getElementById('bodyMapCard').style.display = (liftSex && bw) ? 'block' : 'none';
+      if (!liftSex || !bw) {
+        wRankList.innerHTML = !bw
+          ? '<div class="sub">Log a weigh-in on the Weight tab first — ranking needs your bodyweight.</div>'
+          : '';
+        return;
+      }
+      const names = allLoggedExercises();
+      if (!names.length) {
+        wRankList.innerHTML = '<div class="sub">Log a workout to see your rankings here.</div>';
+        document.getElementById('bodyMap').innerHTML = '';
+        return;
+      }
+      document.getElementById('bodyMap').innerHTML = bodySvg(computeMuscleScores(bw));
+      const scores = [];
+      let rows = '';
+      const filterNote = muscleFilter
+        ? '<div class="sub">Showing exercises for <b>' + muscleFilter + '</b> — <a href="#" id="clearFilter" style="color:var(--accent)">show all</a></div>'
+        : '';
+      names.forEach(function (name) {
+        if (muscleFilter && musclesFor(name).indexOf(muscleFilter) === -1) return;
+        const best = bestEver(name);
+        const ratio = best / bw;
+        const thresholds = standardFor(name);
+        if (thresholds) {
+          const r = rankRatio(ratio, thresholds);
+          scores.push(r.score);
+          rows += '<div class="barlabel"><span>' + name + '</span><span>' + r.tier + ' · ' +
+            Math.round(best) + ' lb est. 1RM</span></div>' +
+            '<div class="bar"><div class="fill" style="width:' + Math.min(100, r.score) + '%"></div></div>';
+        } else {
+          rows += '<div class="barlabel" style="margin-bottom:8px"><span>' + name + '</span><span>' + ratio.toFixed(2) +
+            '× bodyweight · ' + Math.round(best) + ' lb est. 1RM</span></div>' +
+            '<div class="sub" style="margin-top:-6px;margin-bottom:12px">No published standard for this exercise — ratio only.</div>';
+        }
+      });
+      let header = filterNote;
+      if (scores.length && !muscleFilter) {
+        const avg = Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length);
+        header += '<div class="barlabel"><span><b>Overall score</b></span><span>' + avg + ' / 100</span></div>' +
+          '<div class="bar"><div class="fill" style="width:' + Math.min(100, avg) + '%"></div></div><br>';
+      }
+      wRankList.innerHTML = header + rows;
+    }
+
+    document.getElementById('bodyMapCard').addEventListener('click', function (ev) {
+      const region = ev.target.closest('.muscleRegion');
+      if (!region) return;
+      muscleFilter = region.dataset.muscle;
+      showRanks();
+    });
+
+    wRankList.addEventListener('click', function (ev) {
+      if (ev.target.id === 'clearFilter') {
+        ev.preventDefault();
+        muscleFilter = null;
+        showRanks();
+      }
+    });
+
+    // --- Goals UI ---
+    const goalList = document.getElementById('goalList');
+    const goalEditor = document.getElementById('goalEditor');
+    const gName = document.getElementById('gName');
+    const gWeight = document.getElementById('gWeight');
+    const gReps = document.getElementById('gReps');
+    const gDate = document.getElementById('gDate');
+    const newGoalBtn = document.getElementById('newGoalBtn');
+    const gSave = document.getElementById('gSave');
+    const gCancel = document.getElementById('gCancel');
+
+    function showGoals() {
+      if (!goals.length) {
+        goalList.innerHTML = emptyStateHTML('No goals yet — tap + New goal to set one.');
+        return;
+      }
+      goalList.innerHTML = goals.map(function (g, i) {
+        const p = goalProgress(g);
+        const dueText = p.daysLeft == null ? '' : (p.daysLeft >= 0 ? p.daysLeft + ' days left' : 'due date passed');
+        return '<div style="margin-bottom:14px">' +
+          '<div class="barlabel"><span>' + g.name + ' — ' + g.weight + '×' + g.reps + '</span>' +
+          '<span>' + dueText + ' <button class="delGoal grey" data-i="' + i + '">×</button></span></div>' +
+          '<div class="bar"><div class="fill" style="width:' + p.pct + '%"></div></div>' +
+          '<div class="sub" style="margin-top:-8px">' + Math.round(p.current) + ' lb est. 1RM now → ' +
+          Math.round(p.targetOneRM) + ' lb target (' + p.pct + '%)</div></div>';
+      }).join('');
+    }
+
+    newGoalBtn.addEventListener('click', function () {
+      gName.value = ''; gWeight.value = ''; gReps.value = '1'; gDate.value = '';
+      goalEditor.style.display = 'block';
+    });
+    gCancel.addEventListener('click', function () { goalEditor.style.display = 'none'; });
+    gSave.addEventListener('click', function () {
+      if (!gName.value.trim() || !Number(gWeight.value) || !Number(gReps.value)) {
+        statusEl.textContent = 'Fill in the exercise, weight and reps';
+        return;
+      }
+      goals.push({ name: gName.value.trim(), weight: Number(gWeight.value), reps: Number(gReps.value), date: gDate.value || null });
+      saveGoals();
+      showGoals();
+      goalEditor.style.display = 'none';
+      statusEl.textContent = 'Goal set for ' + gName.value.trim();
+    });
+    goalList.addEventListener('click', function (ev) {
+      if (!ev.target.classList.contains('delGoal')) return;
+      const i = Number(ev.target.dataset.i);
+      const removed = goals[i];
+      goals.splice(i, 1);
+      saveGoals();
+      showGoals();
+      showUndo('Deleted goal for ' + removed.name, function () { goals.push(removed); saveGoals(); showGoals(); });
+    });
+  </script>
+</body>
+</html>

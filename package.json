@@ -1,0 +1,9 @@
+{
+  "name": "calorie-app",
+  "private": true,
+  "description": "Production dependencies for netlify/functions/dining-proxy.js only — the app itself is a single static HTML file and needs nothing built or installed.",
+  "dependencies": {
+    "@sparticuz/chromium-min": "^149.0.0",
+    "puppeteer-core": "^25.8.0"
+  }
+}

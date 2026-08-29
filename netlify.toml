@@ -1,0 +1,12 @@
+# Tells Netlify where the site's files live and where its serverless functions live.
+# Needed for the dining-hall lookup feature (dining-proxy.js) — without this, Netlify has no way
+# to know the netlify/functions folder should be deployed as a function rather than ignored.
+#
+# IMPORTANT: this function needs a real deploy (netlify-cli or a Git-connected build), not the
+# usual drag-and-drop onto the Deploys tab. Drag-and-drop only ships static files — it does not
+# run `npm install` for the function's dependencies (puppeteer-core, @sparticuz/chromium-min) or
+# bundle them the way a real build does. See Calorie App notes.md, 2026-08-22, for the deploy
+# steps this needs the first time.
+[build]
+  publish = "."
+  functions = "netlify/functions"
