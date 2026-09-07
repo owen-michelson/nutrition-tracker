@@ -48,9 +48,24 @@ const ALLOWED_PATHS = new Set([
   'NutritionDetail/ShowItemNutritionLabel'
 ]);
 
+// WHY THESE ARE import() AND NOT require() — fixed 2026-09-06, on the first real deploy.
+// Both `puppeteer-core` and `@sparticuz/chromium-min` declare `"type": "module"`, meaning they
+// are ESM-only packages. A CommonJS file like this one cannot `require()` those on most Node
+// versions — it throws ERR_REQUIRE_ESM. It happened to work when tested on this machine because
+// newer Node (22.12+) added a limited `require(esm)` path, but Netlify's function runtime does
+// not have it, so the very first live call failed instantly with:
+//   "require() of ES Module .../puppeteer-core.js ... not supported"
+// and the app showed its generic "could not reach the dining hall site" message.
+// `await import()` is the portable way to load an ESM package from CommonJS and works on every
+// Node version. The `.default || mod` is because an ESM default export arrives on `.default`,
+// while a namespace-only build does not have one.
+// LESSON: "works locally" is not evidence for a serverless function. The local Node and the
+// deployed Node are different runtimes, and this is exactly the seam where they differ.
 async function launchBrowser() {
-  const puppeteerCore = require('puppeteer-core');
-  const chromium = require('@sparticuz/chromium-min');
+  const pcMod = await import('puppeteer-core');
+  const puppeteerCore = pcMod.default || pcMod;
+  const chMod = await import('@sparticuz/chromium-min');
+  const chromium = chMod.default || chMod;
   // LOCAL_CHROMIUM_PATH lets this be tested on this machine against a real local Chromium
   // (pointed at whatever full `puppeteer` already downloaded for itself) without ever writing
   // `require('puppeteer')` in this file. That matters: Netlify's function bundler follows every
@@ -107,7 +122,13 @@ exports.handler = async function (event) {
     // domcontentloaded is enough to pick up a valid session — waiting for the full page
     // (networkidle2) also works but is measurably slower for no extra benefit, since only the
     // fetch() calls after this matter, not anything visual on the page.
-    await page.goto(BASE_ORIGIN + BASE_PATH, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    // 6000, not 15000. A Netlify synchronous function is killed at 10 seconds, and launching
+    // the browser has already spent 1-2 of them (more on a cold start, where chromium-min also
+    // downloads the Chromium pack). A 15-second goto timeout can therefore never fire: the
+    // runtime kills the whole invocation first, so the catch below never runs, the app receives
+    // a platform 502 instead of the structured {ok:false,error} body it knows how to read, and
+    // the finally never closes the browser -- leaving Chromium orphaned in that container.
+    await page.goto(BASE_ORIGIN + BASE_PATH, { waitUntil: 'domcontentloaded', timeout: 6000 });
 
     let text = '';
     for (const step of steps) {

@@ -308,6 +308,7 @@ button:disabled { opacity: 0.5; }
          function that drives a real background browser (see dining-proxy.js for why that's
          needed). Each select only appears once the one before it has been chosen. -->
     <div class="card entryMethod" id="dineCard">
+      <div id="dineRecents"></div>
       <select id="dineHall">
         <option value="">Pick a dining hall</option>
         <option value="1">Ikenberry (Ike)</option>
@@ -548,7 +549,7 @@ button:disabled { opacity: 0.5; }
       <div class="card" id="goalList"></div>
       <button id="newGoalBtn" class="fab">+ New goal</button>
       <div class="card" id="goalEditor" style="display:none">
-        <input id="gName" placeholder="Exercise — e.g. Bench Press">
+        <input id="gName" list="exerciseNames" placeholder="Exercise — e.g. Bench Press">
         <div class="nums">
           <input id="gWeight" type="number" min="0" placeholder="Target weight, lbs">
           <input id="gReps" type="number" min="1" placeholder="Target reps" value="1">
@@ -1108,6 +1109,13 @@ let qty = 1;
     }
 
     function showSaved() {
+  // Remember where the caret was BEFORE the re-render. Every keystroke in the search box
+  // rewrites savedEl.innerHTML, which destroys and recreates the input, and the focus() below
+  // used to put the caret back at the END of the text unconditionally. Clicking into the middle
+  // of "chicken" to fix a typo was therefore impossible -- the caret snapped to the end on the
+  // next character -- and on iOS it also cut off autocorrect mid-word.
+  const prevSearch = document.getElementById('savedSearch');
+  const prevCaret = prevSearch ? prevSearch.selectionStart : null;
   let html = '<div style="display:flex;justify-content:space-between;align-items:center">' +
     '<b>Saved meals (' + meals.length + ')</b>' +
     '<button id="savedToggle" class="grey">' + (savedOpen ? 'Hide' : 'Show') + '</button></div>';
@@ -1127,7 +1135,8 @@ let qty = 1;
   const s = document.getElementById('savedSearch');
   if (s) {
     s.focus();
-    s.setSelectionRange(s.value.length, s.value.length);
+    const at = prevCaret == null ? s.value.length : Math.min(prevCaret, s.value.length);
+    s.setSelectionRange(at, at);
   }
 }
 
@@ -1261,6 +1270,44 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       required: ['match', 'name', 'kcal', 'protein', 'fat', 'carbs']
     };
 
+    // Reference photos are sent to Gemini so it can compare a new photo against meals already
+    // saved. They were being sent at FULL stored size - 55-120KB of base64 each, all of them,
+    // on every request. At ~40 saved meals that is 3-4MB per upload, which blows the 20-second
+    // fetch timeout on a phone's uplink and surfaces as "that took too long", reading like the
+    // AI is broken rather than like a size problem. It also got steadily worse the longer the
+    // app was used, which is the nasty part.
+    //
+    // A reference photo only has to be RECOGNISABLE, not detailed - it exists for "does the new
+    // plate look like this one", not for reading a label. 256px at quality 0.6 is around 8-15KB,
+    // roughly a tenth of the original, so every saved meal stays in the comparison instead of
+    // having to cap the list and lose the oldest ones.
+    //
+    // Shrinking happens at send time and is NOT stored: localStorage is the scarce resource here
+    // (~5MB total, and the full-size photos already live in it), so adding a second copy of every
+    // photo would trade a network problem for a storage one. The in-memory cache below keeps the
+    // re-encoding cost to once per photo per session.
+    const refThumbCache = new Map();
+    function refThumb(b64) {
+      if (refThumbCache.has(b64)) return refThumbCache.get(b64);
+      const job = new Promise(function (resolve) {
+        const img = new Image();
+        img.onload = function () {
+          const scale = Math.min(1, 256 / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.6).split(',')[1]);
+        };
+        // Same reasoning as shrink(): resolve null rather than leaving the promise pending, so
+        // one undecodable stored photo cannot hang the whole food lookup. A null is skipped.
+        img.onerror = function () { resolve(null); };
+        img.src = 'data:image/jpeg;base64,' + b64;
+      });
+      refThumbCache.set(b64, job);
+      return job;
+    }
+
     async function askGemini(parts) {
       const hasPhoto = parts.some(function (p) { return p.inline_data; });
       const names = meals.map(function (m) { return m.name; }).join(', ');
@@ -1270,10 +1317,21 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       // a generic food name — the fix for homemade/recipe dishes it has never seen before.
       let refParts = [];
       if (hasPhoto) {
-        meals.filter(function (m) { return m.photo; }).forEach(function (m) {
-          refParts.push({ text: 'Reference photo of a saved meal called "' + m.name + '":' });
-          refParts.push({ inline_data: { mime_type: 'image/jpeg', data: m.photo } });
-        });
+        const withPhoto = meals.filter(function (m) { return m.photo; });
+        const thumbs = await Promise.all(withPhoto.map(function (m) { return refThumb(m.photo); }));
+        // A byte budget as a backstop, not as the main mechanism. At ~10KB a thumbnail this only
+        // bites somewhere north of 150 saved meals; it exists so the request can never grow
+        // without limit again, whatever happens to photo sizes later. Newest meals go in first,
+        // since those are the ones most likely to be eaten again.
+        let budget = 2 * 1024 * 1024;
+        for (let i = withPhoto.length - 1; i >= 0; i--) {
+          const data = thumbs[i];
+          if (!data) continue;                       // undecodable stored photo - skip it
+          if (data.length > budget) break;
+          budget -= data.length;
+          refParts.push({ text: 'Reference photo of a saved meal called "' + withPhoto[i].name + '":' });
+          refParts.push({ inline_data: { mime_type: 'image/jpeg', data: data } });
+        }
       }
       const instructions = 'Identify the food described or shown in the LAST photo or description below.' +
         (refParts.length ? ' Some saved meals have reference photos shown first — compare the last photo against those first, since a visual match beats a guess.' : '') +
@@ -1528,6 +1586,79 @@ if (data.error && /API key/i.test(data.error.message || '')) {
     // The steps picked so far this lookup, replayed in full on every call (see dining-proxy.js).
     let dinePath = [];
 
+    // --- Dining lookups: a day-scoped cache, and a recents list ---------------------------
+    //
+    // WHY. Every dropdown fires its own call, and each call launches a fresh headless browser on
+    // the server (serverless functions keep nothing between invocations). Picking hall, station,
+    // meal and item was therefore FOUR browser launches for one item, and logging three things
+    // off the same dinner was six or seven. That is the whole reason the lookup felt slow -- it
+    // was never one slow request, it was several unavoidable ones stacked up.
+    //
+    // Three of those four answers barely change: which stations a hall has, which meals a station
+    // is serving, and what is on that meal. They are fixed for the day. So they get cached
+    // against today's date, and the cache is thrown away whole the moment the date changes --
+    // simpler and safer than trying to expire entries individually, and it means a stale menu can
+    // never outlive the day it belonged to. The per-item nutrition label is cached the same way.
+    //
+    // The cache is BEST EFFORT and deliberately does not go through store(): a failed cache write
+    // must never pop the "STORAGE FULL" alert at him, because nothing has actually been lost.
+    // Real data always wins the space.
+    function dineCache() {
+      const c = loadJSON('dineCache', null);
+      if (!c || c.day !== todayKey()) return { day: todayKey(), stations: {}, menus: {}, items: {}, nutrition: {} };
+      return c;
+    }
+    function dineCacheGet(kind, key) {
+      const c = dineCache();
+      return c[kind] && Object.prototype.hasOwnProperty.call(c[kind], key) ? c[kind][key] : null;
+    }
+    function dineCacheSet(kind, key, value) {
+      const c = dineCache();
+      c[kind][key] = value;
+      try { localStorage.setItem('dineCache', JSON.stringify(c)); } catch (e) { /* best effort */ }
+    }
+
+    // Recently logged dining-hall foods, newest first. Re-logging one costs ZERO calls, because
+    // the numbers were already read off the label the first time. This is the real answer to
+    // "logging takes ages" for someone eating at the same four halls all semester: the fastest
+    // lookup is the one that does not happen.
+    let dineRecents = loadJSON('dineRecents', []);
+    const DINE_RECENTS_MAX = 12;
+
+    function rememberDiningItem(f) {
+      dineRecents = dineRecents.filter(function (r) { return r.name !== f.name; });
+      dineRecents.unshift({ name: f.name, kcal: f.kcal, protein: f.protein, fat: f.fat, carbs: f.carbs });
+      if (dineRecents.length > DINE_RECENTS_MAX) dineRecents.length = DINE_RECENTS_MAX;
+      try { localStorage.setItem('dineRecents', JSON.stringify(dineRecents)); } catch (e) { /* best effort */ }
+      showDineRecents();
+    }
+
+    function showDineRecents() {
+      const el = document.getElementById('dineRecents');
+      if (!el) return;
+      if (!dineRecents.length) { el.innerHTML = ''; return; }
+      el.innerHTML = '<div class="sub" style="margin-bottom:6px">Had it before — tap to log it again, no waiting</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">' +
+        dineRecents.map(function (r, i) {
+          // esc(): these names come off a real menu and contain apostrophes and ampersands.
+          return '<button type="button" class="dineAgain grey" data-i="' + i + '" ' +
+            'style="padding:8px 10px;min-height:44px;font-size:12px;text-align:left">' +
+            esc(r.name.split(' — ')[0]) + '<br><span style="opacity:.7">' + Math.round(r.kcal) + ' kcal</span></button>';
+        }).join('') + '</div>';
+    }
+
+    document.getElementById('dineRecents').addEventListener('click', function (ev) {
+      const b = ev.target.closest('.dineAgain');
+      if (!b) return;
+      const r = dineRecents[Number(b.dataset.i)];
+      if (!r) return;
+      lastPhotoTaken = null;
+      showFood({ name: r.name, kcal: r.kcal, protein: r.protein, fat: r.fat, carbs: r.carbs, dining: true }, 'dining hall, from before');
+    });
+
+    // Draw them once at startup. The script sits at the end of <body>, so #dineRecents exists.
+    showDineRecents();
+
     async function dineProxySteps(steps) {
       const r = await safeFetch('/.netlify/functions/dining-proxy', {
         method: 'POST',
@@ -1626,10 +1757,16 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       dineNote.textContent = '';
       if (!dineHall.value) { dinePath = []; return; }
       dinePath = [{ path: 'Unit/SelectUnitFromUnitsList', params: { unitOid: dineHall.value } }];
-      dineNote.textContent = 'Loading stations... (this checks a real background browser, give it a few seconds)';
       try {
-        const text = await dineProxySteps(dinePath);
-        const stations = dineParseLinks(dinePanelHtml(text, 'childUnitsPanel'), 'childUnitsSelectUnit');
+        // Cache hit: no call, no browser launch, no wait. Which stations a hall has does not
+        // change during the day.
+        let stations = dineCacheGet('stations', dineHall.value);
+        if (!stations) {
+          dineNote.textContent = 'Loading stations... (this checks a real background browser, give it a few seconds)';
+          const text = await dineProxySteps(dinePath);
+          stations = dineParseLinks(dinePanelHtml(text, 'childUnitsPanel'), 'childUnitsSelectUnit');
+          if (stations.length) dineCacheSet('stations', dineHall.value, stations);
+        }
         if (!stations.length) { dineNote.textContent = 'No stations found — try again or type the numbers in yourself.'; return; }
         dineStation.innerHTML = '<option value="">Pick a station</option>' + stations.map(function (s) {
           return '<option value="' + s.oid + '">' + s.name.replace(/</g, '&lt;') + '</option>';
@@ -1646,10 +1783,14 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       dineNote.textContent = '';
       if (!dineStation.value) return;
       dinePath = dinePath.slice(0, 1).concat([{ path: 'Unit/SelectUnitFromChildUnitsList', params: { unitOid: dineStation.value } }]);
-      dineNote.textContent = 'Loading dates...';
       try {
-        const text = await dineProxySteps(dinePath);
-        const menus = dineParseMenus(dinePanelHtml(text, 'menuPanel'));
+        let menus = dineCacheGet('menus', dineStation.value);
+        if (!menus) {
+          dineNote.textContent = 'Loading dates...';
+          const text = await dineProxySteps(dinePath);
+          menus = dineParseMenus(dinePanelHtml(text, 'menuPanel'));
+          if (menus.length) dineCacheSet('menus', dineStation.value, menus);
+        }
         if (!menus.length) { dineNote.textContent = 'No menu found for this station right now.'; return; }
         dineMeal.innerHTML = '<option value="">Pick a date and meal</option>' + menus.map(function (m) {
           return '<option value="' + m.oid + '">' + m.label.replace(/</g, '&lt;') + '</option>';
@@ -1667,10 +1808,16 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       dineNote.textContent = '';
       if (!dineMeal.value) return;
       dinePath = dinePath.slice(0, 2).concat([{ path: 'Menu/SelectMenu', params: { menuOid: dineMeal.value } }]);
-      dineNote.textContent = 'Loading items...';
       try {
-        const text = await dineProxySteps(dinePath);
-        const items = dineParseItems(dinePanelHtml(text, 'itemPanel'));
+        // This is the big one for picking several things off one dinner: the item list is
+        // fetched once and then reused, instead of being re-walked for every item.
+        let items = dineCacheGet('items', dineMeal.value);
+        if (!items) {
+          dineNote.textContent = 'Loading items...';
+          const text = await dineProxySteps(dinePath);
+          items = dineParseItems(dinePanelHtml(text, 'itemPanel'));
+          if (items.length) dineCacheSet('items', dineMeal.value, items);
+        }
         if (!items.length) { dineNote.textContent = 'No items found for that meal.'; return; }
         let lastCat = null, html = '<option value="">Pick an item</option>';
         items.forEach(function (it) {
@@ -1693,13 +1840,20 @@ if (data.error && /API key/i.test(data.error.message || '')) {
     dineItem.addEventListener('change', async function () {
       if (!dineItem.value) return;
       dinePath = dinePath.slice(0, 3).concat([{ path: 'NutritionDetail/ShowItemNutritionLabel', params: { detailOid: dineItem.value } }]);
-      dineNote.textContent = 'Loading nutrition...';
       try {
-        // This last step returns the label as plain HTML, not the {success, panels} JSON the
-        // other three use — NetNutrition's own JS just drops it straight into a div, so this
-        // reads it the same way instead of trying to JSON-parse it.
-        const html = await dineProxySteps(dinePath);
-        const n = dineParseNutrition(html);
+        // The one call that genuinely cannot be avoided the first time -- each item's label is
+        // its own page. Cached per item for the day, so going back to something already looked
+        // up (or logging it twice) is instant.
+        let n = dineCacheGet('nutrition', dineItem.value);
+        if (!n) {
+          dineNote.textContent = 'Loading nutrition...';
+          // This last step returns the label as plain HTML, not the {success, panels} JSON the
+          // other three use — NetNutrition's own JS just drops it straight into a div, so this
+          // reads it the same way instead of trying to JSON-parse it.
+          const html = await dineProxySteps(dinePath);
+          n = dineParseNutrition(html);
+          if (n.kcal || n.protein || n.fat || n.carbs) dineCacheSet('nutrition', dineItem.value, n);
+        }
         if (!n.kcal && !n.protein && !n.fat && !n.carbs) {
           dineNote.textContent = 'Could not read the nutrition label for that item — type the numbers in yourself.';
           return;
@@ -1708,7 +1862,8 @@ if (data.error && /API key/i.test(data.error.message || '')) {
         const stationName = dineStation.options[dineStation.selectedIndex].textContent;
         const f = {
           name: n.name + (n.servingSize ? ' (' + n.servingSize + ')' : '') + ' — ' + stationName,
-          kcal: n.kcal, protein: n.protein, fat: n.fat, carbs: n.carbs
+          kcal: n.kcal, protein: n.protein, fat: n.fat, carbs: n.carbs,
+          dining: true   // so logFood() can add it to the tap-to-repeat list
         };
         dineNote.textContent = '';
         showFood(f, 'dining hall');
@@ -1834,8 +1989,16 @@ if (data.error && /API key/i.test(data.error.message || '')) {
 
     todayEl.addEventListener('click', function (ev) {
       if (!ev.target.classList.contains('del')) return;
-      const key = todayKey();
+      // Use the day this list was RENDERED for, not the day it is now. Leaving the app open in
+      // the foreground across midnight (phone on a charger) left yesterday's rows on screen
+      // while todayKey() had already rolled over: log[key] was undefined, so deleting threw
+      // "Cannot read properties of undefined". Worse, once something had been logged on the new
+      // day, the old row's index pointed into the NEW day's array and deleted the wrong entry.
+      // The re-render guard below turns both into a harmless refresh.
+      const key = todayEl.dataset.day || todayKey();
+      if (!log[key] || key !== todayKey()) { showToday(); return; }
       const removed = log[key][Number(ev.target.dataset.i)];
+      if (!removed) { showToday(); return; }
       log[key].splice(Number(ev.target.dataset.i), 1);
       store('log', log);
       showToday();
@@ -1915,10 +2078,14 @@ savedEl.addEventListener('input', function (ev) {
         return false;
       }
       showToday();
+      // Only remember it once it has ACTUALLY been logged, not merely looked up -- otherwise the
+      // repeat list fills with things he browsed past and decided against.
+      if (f.dining) rememberDiningItem(f);
       return true;
     }
 
     function showToday() {
+      todayEl.dataset.day = todayKey();
       const entries = log[todayKey()] || [];
       const t = dayTotal(todayKey());
       let list = '';
@@ -1971,7 +2138,14 @@ savedEl.addEventListener('input', function (ev) {
         kcal: f.kcal * q,
         protein: f.protein * q,
         fat: f.fat * q,
-        carbs: f.carbs * q
+        carbs: f.carbs * q,
+        // Carry the non-numeric fields across. Scaling rebuilt the object from scratch and kept
+        // only the five numbers, which silently dropped `dining` -- so anything logged at a
+        // quantity other than 1 never reached the tap-to-repeat list, and the next time he ate
+        // it he paid for the full four-launch lookup again. `photo` goes for the same reason:
+        // two of something is still a picture of the same food.
+        dining: f.dining,
+        photo: f.photo
       };
     }
 
@@ -2297,9 +2471,22 @@ const bkBox = document.getElementById('bkBox');
 
     document.getElementById('bkCopy').addEventListener('click', function () {
       if (!bkBox.value) bkBox.value = backupText();
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(bkBox.value);
-        statusEl.textContent = 'Copied - paste it somewhere safe';
+      // writeText() returns a PROMISE. The old code fired it and then set the
+      // "Copied" message on the very next line, unconditionally -- so a copy
+      // that FAILED still told Owen it had worked. iOS Safari rejects this call
+      // for real (it is gated on a user gesture and on the document having
+      // focus), and this is the only backup path for data that exists nowhere
+      // but his phone. A backup that lies about succeeding is worse than one
+      // that plainly refuses, because he would act on it: wipe the app, paste,
+      // and find nothing. So the message now waits for the promise, and the
+      // failure branch falls back to selecting the text so he can copy by hand.
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(bkBox.value).then(function () {
+          statusEl.textContent = 'Copied - paste it somewhere safe';
+        }, function () {
+          bkBox.select();
+          statusEl.textContent = 'Could not copy on its own - the text above is selected, copy it yourself';
+        });
       } else {
         bkBox.select();
         statusEl.textContent = 'Select the text and copy it yourself';
@@ -3082,7 +3269,14 @@ const bkBox = document.getElementById('bkBox');
     function fromInputWeight(v) { const n = Number(v); return liftUnit === 'kg' ? n * LB_PER_KG : n; }
     // Round for humans: whole numbers in lb (plates are whole), one decimal in kg only when it
     // actually needs one, so 60 kg reads "60" and not "60.0".
-    function roundWeight(x) { return liftUnit === 'kg' ? Math.round(x * 10) / 10 : Math.round(x); }
+    // One decimal in BOTH units. lb mode used to be Math.round(x), which was fine for display
+    // but not fine for the edit form: that form is rebuilt from the DOM, so opening a workout to
+    // fix a rep count somewhere else and hitting Save wrote the ROUNDED weight back over the
+    // record. A 52.5 lb dumbbell became 53 lb permanently, and anything originally typed in kg
+    // (100 kg is stored as 220.462 lb) lost its fraction the first time the workout was edited.
+    // toLocaleString() still prints a whole number as "135", so nothing looks different unless
+    // the weight really does have a fraction.
+    function roundWeight(x) { return Math.round(x * 10) / 10; }
     // toLocaleString for the thousands separator - total volume runs into five figures and
     // "12345 lb" is genuinely hard to read at a glance on a phone.
     function fmtWeight(lbs) { return roundWeight(toDisplayWeight(lbs)).toLocaleString() + ' ' + liftUnit; }
@@ -4116,6 +4310,13 @@ const bkBox = document.getElementById('bkBox');
     // the picker can never show one routine while the cards below are another's.
     let lastPickValue = wRoutinePick.value;
     let pickDiscardArmed = false;
+    // The "tap again to confirm" flag needs an EXPIRY, exactly like restoreArmTimer does for
+    // the backup Restore button. Without one it stayed armed for the rest of the workout: warn
+    // once at set three, keep training for twenty minutes, brush the picker again, and every
+    // number typed since is gone with no second warning -- the first one faded three seconds
+    // after it appeared, so nothing on screen connects the two. A confirmation that never
+    // expires is not a confirmation, it is a delayed trigger.
+    let pickDiscardTimer = null;
 
     function typedSetCount() {
       let n = 0;
@@ -4128,9 +4329,11 @@ const bkBox = document.getElementById('bkBox');
     // True if the caller should STOP. Arms on the first attempt, allows the second.
     function blockedByTypedSets(what) {
       const n = typedSetCount();
-      if (n === 0) { pickDiscardArmed = false; return false; }
-      if (pickDiscardArmed) { pickDiscardArmed = false; return false; }
+      if (n === 0) { pickDiscardArmed = false; clearTimeout(pickDiscardTimer); return false; }
+      if (pickDiscardArmed) { pickDiscardArmed = false; clearTimeout(pickDiscardTimer); return false; }
       pickDiscardArmed = true;
+      clearTimeout(pickDiscardTimer);
+      pickDiscardTimer = setTimeout(function () { pickDiscardArmed = false; }, 15000);
       wRoutinePick.value = lastPickValue;      // undo the visible change
       statusEl.textContent = 'That would throw away ' + n + ' number' + (n === 1 ? '' : 's')
         + ' you have typed in this workout, and they are not saved anywhere yet. '
@@ -4544,7 +4747,14 @@ const bkBox = document.getElementById('bkBox');
       startRest(Number(ev.target.dataset.secs));
     });
 
-    setInterval(renderActiveBar, 1000);
+    setInterval(function () {
+      renderActiveBar();
+      // Roll the Today screen over when the clock passes midnight while the app is just sitting
+      // open. The existing visibilitychange/focus handlers only fire if he switches away and
+      // back, which does not happen on a phone left on a charger -- so the rows, the totals and
+      // the streak all stayed on yesterday.
+      if (todayEl.dataset.day && todayEl.dataset.day !== todayKey()) showToday();
+    }, 1000);
     document.addEventListener('visibilitychange', renderActiveBar);
     window.addEventListener('focus', renderActiveBar);
     renderActiveBar();
@@ -4853,7 +5063,15 @@ const bkBox = document.getElementById('bkBox');
       if (t.classList.contains('wdEdit')) {
         const idx = Number(t.dataset.idx);
         const card = t.closest('.card');
-        card.outerHTML = workoutEditHTML({ w: workouts[idx], i: idx });
+        const record = workouts[idx];
+        card.outerHTML = workoutEditHTML({ w: record, i: idx });
+        // Hold the RECORD, not its position. Undoing a delete splices a workout back in, which
+        // shifts every index at or after it -- and an editor already open still carried the old
+        // number, so Save wrote its sets over the workout that had just been restored. Same fix
+        // already used for editingMeal and editingRoutine: identity survives reordering,
+        // an index does not.
+        const editorEl = document.querySelector('.wdEditor[data-idx="' + idx + '"]');
+        if (editorEl) editorEl._record = record;
         return;
       }
 
@@ -4876,7 +5094,16 @@ const bkBox = document.getElementById('bkBox');
 
       if (t.classList.contains('wdSaveEdit')) {
         const editor = t.closest('.wdEditor');
-        const idx = Number(editor.dataset.idx);
+        // Resolve by identity where we have it; fall back to the index for an editor that was
+        // somehow rendered without one. If the record is no longer in the array at all it was
+        // deleted while this editor sat open -- refuse rather than write over a stranger.
+        const idx = editor._record ? workouts.indexOf(editor._record) : Number(editor.dataset.idx);
+        if (idx < 0 || !workouts[idx]) {
+          statusEl.textContent = 'That workout was deleted while you were editing it - nothing was saved.';
+          showRanks();
+          closeWorkoutDetail();
+          return;
+        }
         const original = workouts[idx];
         const exercises = [];
         let badNumber = false; // same negative-number refusal as wFinish, see the note there
@@ -5036,10 +5263,17 @@ const bkBox = document.getElementById('bkBox');
     // estimated 1RM. This is the series the per-exercise chart draws.
     function exerciseHistory(name) {
       const out = [];
-      const factor = isDumbbellExercise(name) ? 2 : 1;
+      // The factor has to come from the RECORD, not from the name. Whether a lift was logged
+      // per-dumbbell is stamped onto each workout entry when it is finished (entry.dumbbell),
+      // because the routine it came from can be edited or deleted later. Deriving it from
+      // today's routines instead made this screen disagree with itself: "Best ever: 187 lb"
+      // printed directly above a chart and a PR list that both said 93 lb, for the same lift,
+      // because bestEver() reads the record and this function read the routine. Same one-line
+      // shape as bestEver() and workoutVolume() already use.
       workouts.forEach(function (w, i) {
         w.exercises.forEach(function (e) {
           if (e.name !== name) return;
+          const factor = wasDumbbell(e) ? 2 : 1;
           let best = 0, vol = 0;
           workingSets(e.sets).forEach(function (sset) {
             const est = epley1RM(sset.weight * factor, sset.reps);
@@ -5252,12 +5486,28 @@ const bkBox = document.getElementById('bkBox');
         return;
       }
       card.style.display = 'block';
+      // The last bucket is the week TODAY falls in, and weeks run Monday to Sunday
+      // (weekStart uses (getDay()+6)%7). So Sunday is the last day INSIDE that bucket, not the
+      // day after it -- on a Sunday morning there is still a whole training day to come. The
+      // first attempt at this used `getDay() === 0`, which moved the wrong percentage from six
+      // days a week down to one instead of removing it. The current bucket is never finished
+      // while it is the current bucket, so it never gets a percentage. The eight-week bars
+      // underneath still show where the week is sitting, which is the honest version.
+      const weekComplete = false;
       document.getElementById('volumeChart').innerHTML = muscles.map(function (m) {
         const vals = data.byMuscle[m];
         const now = vals[vals.length - 1], prev = vals[vals.length - 2] || 0;
-        const delta = prev > 0 ? Math.round((now - prev) / prev * 100) : null;
+        // Only compare once the week is actually over. The last bucket is the week IN PROGRESS,
+        // so dividing it by a complete week said "chest -68%" on a Tuesday when the only thing
+        // that had happened was that five days were left. A percentage reads as a verdict, and
+        // this one was wrong six days out of seven. Weeks here run Monday to Sunday (weekStart
+        // uses (getDay()+6)%7), so the current bucket is complete only on a Sunday. Every other
+        // day the label says "so far" and shows no percentage - the eight-week bars underneath
+        // still show where this week is sitting, which is the honest version of the same signal.
+        const delta = (weekComplete && prev > 0) ? Math.round((now - prev) / prev * 100) : null;
         return '<div style="margin-top:10px">' +
-          '<div class="barlabel"><span>' + m + '</span><span>' + fmtWeight(now) + ' this week' +
+          '<div class="barlabel"><span>' + m + '</span><span>' + fmtWeight(now) +
+          (weekComplete ? ' this week' : ' this week so far') +
           (delta === null ? '' : ' \u00b7 ' + (delta > 0 ? '+' : '') + delta + '%') + '</span></div>' +
           barsSVG(vals) + '</div>';
       }).join('');
@@ -5603,10 +5853,43 @@ const bkBox = document.getElementById('bkBox');
     // date" goal reduce to the same math: convert the target into an implied 1RM with Epley (a
     // single IS its own 1RM, so reps=1 just returns the weight unchanged) and compare against
     // your current best estimated 1RM for that exercise — the same number the ranking uses.
+    // Goals are the ONE exercise-name box in the app the user types freehand, so "bench press"
+    // and "Bench Press" both happen. goalReminderFor matches goals case-insensitively, but
+    // bestEver walks the workout records with a case-SENSITIVE compare -- so a goal whose
+    // capitalisation differed from the logged lift showed the reminder on the Log card and then
+    // sat at "0 lb est., 0% there" for ever, no matter what he lifted. This maps a typed goal
+    // name back to the name actually stored on his workouts, folding case and curly apostrophes
+    // through the existing libKey() normaliser. #gName also has the autocomplete now, so this is
+    // the belt to that braces.
+    function canonicalLoggedName(name) {
+      const want = libKey(name);
+      for (let i = workouts.length - 1; i >= 0; i--) {
+        const e = (workouts[i].exercises || []).find(function (x) { return libKey(x.name) === want; });
+        if (e) return e.name;
+      }
+      return name;
+    }
+
+    // The per-dumbbell factor as most recently ACTUALLY logged for this lift. Falls back to the
+    // routine setting only when there is no history to read it from.
+    function lastLoggedFactor(name) {
+      const want = libKey(name);
+      for (let i = workouts.length - 1; i >= 0; i--) {
+        const e = (workouts[i].exercises || []).find(function (x) { return libKey(x.name) === want; });
+        if (e) return wasDumbbell(e) ? 2 : 1;
+      }
+      return isDumbbellExercise(name) ? 2 : 1;
+    }
+
     function goalProgress(g) {
-      const factor = isDumbbellExercise(g.name) ? 2 : 1;
+      // `current` comes from bestEver(), which uses the per-record flag. The target has to be
+      // computed on the SAME assumption or the percentage compares two different scales -- a
+      // goal would swing between ~50% and 100% purely on whether a routine happened to exist.
+      // So take the factor from the most recent logged record for this lift, and only fall
+      // back to the routine when he has never logged it at all and there is nothing better.
+      const factor = lastLoggedFactor(g.name);
       const targetOneRM = epley1RM(g.weight * factor, g.reps);
-      const current = bestEver(g.name);
+      const current = bestEver(canonicalLoggedName(g.name));
       const pct = targetOneRM ? Math.min(100, Math.round(current / targetOneRM * 100)) : 0;
       const daysLeft = g.date ? Math.round((new Date(g.date) - new Date(todayKey())) / 86400000) : null;
       return { targetOneRM: targetOneRM, current: current, pct: pct, daysLeft: daysLeft };
