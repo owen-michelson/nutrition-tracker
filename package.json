@@ -1,9 +1,9 @@
 {
   "name": "calorie-app",
   "private": true,
-  "description": "Production dependencies for netlify/functions/dining-proxy.js only — the app itself is a single static HTML file and needs nothing built or installed.",
-  "dependencies": {
-    "@sparticuz/chromium-min": "^149.0.0",
+  "description": "The app itself is a single static HTML file and needs nothing built or installed. The one serverless function (netlify/functions/dining-menu.js) uses only Node's built-in fetch, so there are no production dependencies. puppeteer-core is a DEV dependency only: the test suites in Projects/Calorie App/tests drive a real Chrome through it. It is never shipped.",
+  "dependencies": {},
+  "devDependencies": {
     "puppeteer-core": "^25.8.0"
   }
 }

@@ -116,7 +116,16 @@ button:disabled { opacity: 0.5; }
 .btnStack button, .btnStack .photobtn { display: block; width: 100%; margin-bottom: 8px; text-align: center; }
     .entryMethod { display: none; margin-top: 8px; }
     .fab { display: block; width: 100%; margin-top: 4px; font-size: 18px; }
-    .sheet { margin-top: 8px; }
+    /* The Eating "+" floats at the thumb (Owen, 11 Sep) and its menu slides up as a sheet. The
+       Fitness FABs keep the inline style above. */
+    #addBtn { position: fixed; right: 16px; bottom: 18px; width: 60px; height: 60px; padding: 0; margin: 0;
+      border-radius: 50%; z-index: 900; box-shadow: 0 6px 18px rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; }
+    #addBtn svg { width: 34px; height: 34px; }
+    #todayView { padding-bottom: 96px; }
+    #sheetBackdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 940; display: none; }
+    .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 950; margin: 0; background: var(--card);
+      border: 1px solid var(--border); border-bottom: none; border-radius: 18px 18px 0 0; padding: 14px 14px 26px;
+      max-height: 80vh; overflow: auto; }
     .sheet button { display: block; width: 100%; margin-bottom: 8px; }
     /* Entry-method rows: icon on the left, label beside it. flex overrides the
        display:block above (later rule, equal specificity would lose, so this is
@@ -152,6 +161,48 @@ button:disabled { opacity: 0.5; }
     .editmeal svg, .editRt svg, .noteSet svg, .calPrev svg, .calNext svg,
     #qtyRow button svg, .fab svg, .addOption svg { pointer-events: none; }
     #photo, #rPhoto, #fPhoto, #rFinalPhoto { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    /* #fPhoto is a file input that lives INSIDE #editor, so "#editor input { width: 100% }"
+       further down (specificity 1-0-1) beat the "width: 1px" above (1-0-0) and laid a full-width
+       control out to the right of its label. It is opacity:0 so nothing showed - but an
+       absolutely positioned box still counts towards the page's scroll width, so opening the
+       editor made the document 544px wide on a 390px phone. That is the screen going "hotdog
+       style": the page scrolls sideways into empty black and every card squashes to the left.
+       Two ids beat one id plus an element, so this wins with no !important. Measured before and
+       after on a 390px viewport: document width 544px -> 390px. */
+    #editor #fPhoto { width: 1px; padding: 0; border: 0; }
+    /* Row action for "save this logged meal into my saved meals". Same bare-icon treatment as
+       the pencil and the trash can so a row action doesn't read as the loudest thing on screen. */
+    .savelog { background: none; color: var(--accent); font-size: 18px; padding: 0 0 0 12px; width: auto; }
+    /* Apple's 44pt floor for anything tappable. The icons stay 20px; the hit area grows. */
+    .del, .delmeal, .delw, .editmeal, .savelog, .delSet, .noteSet, .delEx, .delGoal, .delRt, .editRt {
+      min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    .logname { cursor: pointer; text-decoration: underline dotted; text-decoration-color: var(--border); text-underline-offset: 3px; }
+    .savelog svg { width: 20px; height: 20px; display: block; margin: 0 auto; pointer-events: none; }
+    /* History day rows expand to show the meals inside them. */
+    .histday { cursor: pointer; }
+    .histname { display: flex; align-items: center; gap: 6px; }
+    .histcaret svg { width: 13px; height: 13px; display: block; transition: transform 0.15s; }
+    .histcaret.open svg { transform: rotate(90deg); }
+    /* Indented past the caret (13px) plus its gap (6px) so a meal inside a day sits to the
+       RIGHT of the date it belongs to. At 18px it sat to the left of it and the nesting
+       read backwards. */
+    .subrow { padding-left: 26px; }
+    /* Meal picker. Three 44px targets across a 375px phone (3x~117 + 2x6), same sizing rule as
+       the main tab row - these get tapped every single time food is logged at a hall. */
+    #dineMealRow { display: flex; gap: 6px; margin: 4px 0 12px; }
+    #dineMealRow button { flex: 1; min-width: 0; font-size: 14px; padding: 11px 2px; min-height: 44px;
+      background: var(--secondary-bg); color: var(--text-dim); }
+    #dineMealRow button.on { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+    #cupRow { display: flex; align-items: center; gap: 8px; }
+    #cupRow input { width: 90px; margin-bottom: 8px; }
+    #iceRow { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 6px; }
+    #iceRow input { width: 20px; height: 20px; }
+    /* One row per drink, grouped by where in the hall it comes from. Full width and 44px tall -
+       these are tapped standing up holding a tray. */
+    .drinkBtn { display: flex; justify-content: space-between; align-items: center; width: 100%;
+      min-height: 44px; margin-bottom: 6px; background: var(--secondary-bg); color: var(--text);
+      font-size: 15px; text-align: left; gap: 10px; }
+    .drinkBtn span:last-child { color: var(--text-dim); font-size: 13px; flex: none; }
     .mealhead { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold; color: var(--text-dim); margin: 14px 0 2px; text-transform: uppercase; }
     .mealhead svg { width: 16px; height: 16px; flex: none; }
     .row { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--border); font-size: 15px; }
@@ -159,7 +210,7 @@ button:disabled { opacity: 0.5; }
 #qtyRow { display: flex; gap: 6px; align-items: center; }
     #qtyRow button { flex: 0 0 46px; background: var(--secondary-bg); color: var(--text); margin: 0; padding: 10px 0; font-size: 20px; }
     #qtyRow input { flex: 1; text-align: center; margin: 0; }
-    #editor input, #bc, #grams, #desc, #descRestaurant, #foodSearch, #qtyRow input, #wDate, #wLbs, #rName, #rServings, #rIng, #cAge, #cFt, #cIn, #cLbs, #cSex, #cAct, #cTarget, #cDir, #cRate, #rtName, #wRoutinePick, #dineHall, #dineStation, #dineMeal, #dineItem {
+    #editor input, #bc, #grams, #desc, #descRestaurant, #foodSearch, #qtyRow input, #wDate, #wLbs, #rName, #rServings, #rIng, #cAge, #cFt, #cIn, #cLbs, #cSex, #cAct, #cTarget, #cDir, #cRate, #rtName, #wRoutinePick, #dineHall, #dineStation, #dineItem, #dineDate, #dineCupOz {
       font-size: 16px;
       padding: 9px;
       border: 1px solid var(--border);
@@ -202,6 +253,10 @@ button:disabled { opacity: 0.5; }
     #hero canvas, #hero svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: block; }
     #hero h1 { position: relative; z-index: 2; margin: 0; padding: 0 16px; }
     #modeTabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    #modeTabs #settingsBtn { flex: none; width: 52px; font-size: 20px; padding: 0; }
+    .secHead { width: 100%; text-align: left; background: none; color: var(--text); font-weight: 700; font-size: 15px; padding: 10px 0; }
+    .secHead::before { content: '▸ '; color: var(--accent); }
+    .secHead.open::before { content: '▾ '; }
     #modeTabs button { flex: 1; background: var(--card); color: var(--text-dim); font-size: 15px; padding: 12px 2px; border: 1px solid var(--border); }
     #modeTabs button.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
     /* Measured on a 375px phone on 2026-08-30: these buttons were 34px tall
@@ -256,125 +311,14 @@ button:disabled { opacity: 0.5; }
   <div id="modeTabs">
     <button class="mode active" data-section="eating">Eating</button>
     <button class="mode" data-section="fitness">Fitness</button>
+    <button id="settingsBtn" class="grey" aria-label="Settings" title="Settings">⚙</button>
   </div>
-
-  <div id="eatingSection">
-  <div id="tabs">
-    <button class="tab active" data-view="todayView">Today</button>
-    <button class="tab" data-view="historyView">History</button>
-    <button class="tab" data-view="weightView">Weight</button>
-    <button class="tab" data-view="recipeView">Recipes</button>
-  </div>
-
-  <div id="todayView" class="view">
-    <div class="card" id="saved"></div>
-    <div class="card" id="today"></div>
-    <button id="addBtn" class="fab" aria-label="Add food"><!-- batch 11 plus, colours inverted: the FAB has the accent background, so the disc takes --on-accent and the plus stroke takes --accent, rather than the drawn cyan-disc/dark-stroke version used on the grey quantity stepper below. --><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="36" fill="var(--on-accent)"/><path d="M 50 30 L 50 70 M 30 50 L 70 50" stroke="var(--accent)" stroke-width="8" stroke-linecap="round"/></svg></button>
-    <!-- The six entry-method icons (Design Skill batch 01, checked clean 2026-08-24). These sit
-         inline in the markup rather than in a JS constant because this menu is static HTML that
-         never gets re-rendered - no TDZ risk to design around, unlike MEAL_ICONS.
-         Each icon carries its own dark rounded-square ground (fill var(--on-accent)) as its first
-         shape. That is deliberate: the art was drawn for the app's dark card background, but these
-         buttons have an ACCENT (cyan/violet) background, so without a ground the cyan parts of the
-         art - the whole magnifying glass, most notably - would be invisible against the button.
-         Using var(--on-accent) rather than a fixed hex means the ground follows the mode switch. -->
-    <div id="addMenu" class="sheet" style="display:none">
-      <button class="addOption" data-mode="photo"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><rect x="14" y="30" width="72" height="52" rx="10" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><path d="M 34 30 L 40 20 L 60 20 L 66 30 Z" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><rect x="66" y="36" width="14" height="9" rx="2" fill="var(--accent)"/><circle cx="50" cy="57" r="18" fill="#17171d" stroke="#0d0d12" stroke-width="3"/><circle cx="50" cy="57" r="11" fill="#3a3f4d"/><circle cx="46" cy="53" r="3.4" fill="#8f96a8"/><path d="M 14 60 L 14 72 A 10 10 0 0 0 24 82 L 40 82 L 40 60 Z" fill="#1e1e26"/></svg><span>Take a photo</span></button>
-      <button class="addOption" data-mode="bc"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><rect x="16" y="16" width="68" height="68" rx="8" fill="#17171d" stroke="#2a2a33" stroke-width="2.5"/><g fill="#ededf2"><rect x="24" y="30" width="3" height="34"/><rect x="30" y="30" width="6" height="34"/><rect x="39" y="30" width="2" height="34"/><rect x="44" y="30" width="4" height="34"/><rect x="51" y="30" width="7" height="34"/><rect x="61" y="30" width="2" height="34"/><rect x="66" y="30" width="5" height="34"/><rect x="74" y="30" width="3" height="34"/></g><circle cx="50" cy="72" r="5.5" fill="var(--accent)"/><path d="M 47.5 72 L 49.5 74.5 L 53.5 69.5" stroke="var(--on-accent)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Scan a barcode</span></button>
-      <button class="addOption" data-mode="search"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><circle cx="44" cy="44" r="24" fill="none" stroke="var(--accent)" stroke-width="8"/><line x1="61" y1="61" x2="82" y2="82" stroke="var(--accent)" stroke-width="9" stroke-linecap="round"/><path d="M 34 40 A 14 14 0 0 1 46 28" stroke="#c7e9f0" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8"/></svg><span>Search a food</span></button>
-      <button class="addOption" data-mode="dine"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><rect x="12" y="34" width="76" height="46" rx="9" fill="#3a3f4d" stroke="#0d0d12" stroke-width="3"/><rect x="18" y="40" width="64" height="34" rx="5" fill="#23232b"/><line x1="46" y1="40" x2="46" y2="74" stroke="#3a3f4d" stroke-width="2.5"/><circle cx="34" cy="57" r="9" fill="var(--accent)" opacity="0.9"/><rect x="58" y="47" width="18" height="7" rx="3.5" fill="#7d8296"/><rect x="58" y="58" width="14" height="7" rx="3.5" fill="#7d8296"/></svg><span>Dining hall food</span></button>
-      <button class="addOption" data-mode="desc"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><path d="M 18 20 Q 14 20 14 26 L 14 56 Q 14 62 20 62 L 34 62 L 30 76 L 50 62 L 78 62 Q 84 62 84 56 L 84 26 Q 84 20 78 20 Z" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><circle cx="38" cy="40" r="7" fill="var(--accent)"/><circle cx="58" cy="40" r="7" fill="var(--accent)"/><circle cx="78" cy="40" r="7" fill="var(--accent)"/></svg><span>Describe what I ate</span></button>
-      <button class="addOption" data-mode="manual"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><rect x="18" y="16" width="64" height="68" rx="10" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><g fill="var(--accent)"><rect x="27" y="26" width="14" height="12" rx="3"/><rect x="43" y="26" width="14" height="12" rx="3"/><rect x="59" y="26" width="14" height="12" rx="3"/><rect x="27" y="42" width="14" height="12" rx="3"/><rect x="43" y="42" width="14" height="12" rx="3"/><rect x="59" y="42" width="14" height="12" rx="3"/></g><rect x="27" y="58" width="46" height="12" rx="3" fill="#9a9aa5"/></svg><span>Type numbers myself</span></button>
-      <button id="addCancel" class="grey">Cancel</button>
-    </div>
-    <div class="card entryMethod" id="descCard">
-      <input id="desc" type="text" placeholder="Describe what you ate">
-      <input id="descRestaurant" type="text" placeholder="Restaurant (optional) — e.g. Chipotle">
-      <button id="descBtn">Ask the AI</button>
-    </div>
-    <div class="card entryMethod" id="bcCard">
-      <input id="bc" type="text" inputmode="numeric" placeholder="Barcode number">
-      <button id="lookupBtn">Look up</button>
-    </div>
-    <!-- Real food database search (USDA FoodData Central) - a typed name instead of a
-         photo/barcode/manual guess. Feeds the same per100/portion UI the barcode path uses. -->
-    <div class="card entryMethod" id="searchCard">
-      <input id="foodSearch" type="text" placeholder="Search a food, e.g. banana">
-      <button id="foodSearchBtn">Search</button>
-      <div id="foodSearchResults"></div>
-    </div>
-    <!-- Pick your way down to one item at UIUC's own dining halls and get its real printed
-         nutrition label — same data the Illinois app shows, pulled live via a serverless
-         function that drives a real background browser (see dining-proxy.js for why that's
-         needed). Each select only appears once the one before it has been chosen. -->
-    <div class="card entryMethod" id="dineCard">
-      <div id="dineRecents"></div>
-      <select id="dineHall">
-        <option value="">Pick a dining hall</option>
-        <option value="1">Ikenberry (Ike)</option>
-        <option value="11">ISR</option>
-        <option value="22">PAR</option>
-        <option value="29">Lincoln/Allen (LAR)</option>
-      </select>
-      <select id="dineStation" style="display:none"><option value="">Pick a station</option></select>
-      <select id="dineMeal" style="display:none"><option value="">Pick a date and meal</option></select>
-      <select id="dineItem" style="display:none"><option value="">Pick an item</option></select>
-      <div class="sub" id="dineNote"></div>
-    </div>
-    <div class="card" id="portion" style="display:none">
-      <div id="portionName"></div>
-      <input id="grams" type="number" min="0" placeholder="grams">
-      <button id="usePortion">Use this amount</button>
-    </div>
-    <div class="entryMethod" id="photoCard">
-      <label for="photo" class="photobtn">Take a photo</label>
-      <input type="file" accept="image/*" capture="environment" id="photo">
-    </div>
-    <button id="manualBtn" style="display:none">Type numbers myself</button>
-    <img id="preview">
-    <button id="saveBtn" style="display:none">Save these numbers</button>
-    <div class="card" id="editor" style="display:none">
-      <input id="fName" placeholder="Meal name">
-      <div class="nums">
-        <input id="fKcal" type="number" min="0" placeholder="kcal">
-        <input id="fProtein" type="number" min="0" placeholder="protein g">
-        <input id="fFat" type="number" min="0" placeholder="fat g">
-        <input id="fCarbs" type="number" min="0" placeholder="carbs g">
-      </div>
-      <div class="mealhead">Photo</div>
-      <div class="sub" id="fPhotoHint">Required — so the app can recognise this food from a photo later.</div>
-      <img id="fPhotoPreview" style="display:none">
-      <label for="fPhoto" class="photobtn">Take a photo</label>
-      <input type="file" accept="image/*" capture="environment" id="fPhoto">
-      <button id="confirmSave">Save meal</button>
-      <button id="cancelSave" class="grey">Cancel</button>
-    </div>
-    <div id="logBtns" style="display:none">
-<div class="sub">How many?</div>
-      <div id="qtyRow">
-        <button id="qtyMinus" type="button" class="grey" aria-label="One fewer"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="36" fill="#3a3f4d"/><path d="M 30 50 L 70 50" stroke="var(--text)" stroke-width="8" stroke-linecap="round"/></svg></button>
-        <input id="qtyInput" type="number" min="0.25" inputmode="decimal" step="0.5" value="1">
-        <button id="qtyPlus" type="button" class="grey" aria-label="One more"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="36" fill="var(--accent)"/><path d="M 50 30 L 50 70 M 30 50 L 70 50" stroke="var(--on-accent)" stroke-width="8" stroke-linecap="round"/></svg></button>
-      </div>
-      <button class="meal">Breakfast</button>
-      <button class="meal">Lunch</button>
-      <button class="meal">Dinner</button>
-      <button class="meal">Snack</button>
-    </div>
-  </div>
-
-  <div id="historyView" class="view" style="display:none">
-    <div class="card" id="history">Nothing logged yet</div>
-  </div>
-
-  <div id="weightView" class="view" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <b style="font-size:18px">Weight</b>
-      <button id="settingsBtn" class="grey">⚙ Settings</button>
-    </div>
-    <div id="calcPanel" style="display:none">
-      <div class="card">
-        <b>Work out your targets</b>
+  <!-- Settings live here, off the Weight tab (Owen, 11 Sep): backup and keys have nothing to do
+       with weight. Three sections, each closed until tapped, so the panel is three lines long. -->
+  <div id="calcPanel" style="display:none">
+    <div class="card">
+      <button type="button" class="secHead" data-sec="secTargets">Work out your targets</button>
+      <div id="secTargets" class="secBody" style="display:none">
         <div class="sub">Mifflin-St Jeor. Redo this when your weight has moved a few pounds.</div>
         <select id="cSex"><option value="m">Male</option><option value="f">Female</option></select>
         <input id="cAge" type="number" min="0" placeholder="Age">
@@ -400,10 +344,12 @@ button:disabled { opacity: 0.5; }
           <option value="fast">Aggressive</option>
         </select>
         <button id="cCalc">Work out my targets</button>
+        <div id="cResult"></div>
       </div>
-      <div class="card" id="cResult"></div>
-<div class="card">
-        <b>Backup</b>
+    </div>
+    <div class="card">
+      <button type="button" class="secHead" data-sec="secBackup">Backup</button>
+      <div id="secBackup" class="secBody" style="display:none">
         <div class="sub">Everything is stored in this browser only. If the phone is lost or the browser is cleared, it is gone. Back up now and then.</div>
         <div class="btnStack">
           <button id="bkMake">Make a backup</button>
@@ -413,6 +359,219 @@ button:disabled { opacity: 0.5; }
         <textarea id="bkBox" rows="4" placeholder="Your backup text appears here. To restore, paste a backup in and tap Restore."></textarea>
         <button id="bkRestore" class="grey">Restore from the box above</button>
       </div>
+    </div>
+    <div class="card">
+      <button type="button" class="secHead" data-sec="secKeys">Keys</button>
+      <div id="secKeys" class="secBody" style="display:none">
+        <div class="sub">Both optional. Stored on this phone only, never in a backup.</div>
+        <div class="sub" id="geminiKeyState"></div>
+        <button id="geminiKeyBtn" class="grey">Set Gemini key</button>
+        <div class="sub" id="usdaKeyState" style="margin-top:10px"></div>
+        <button id="usdaKeyBtn" class="grey">Set food search key</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="eatingSection">
+  <div id="tabs">
+    <button class="tab active" data-view="todayView">Today</button>
+    <button class="tab" data-view="historyView">History</button>
+    <button class="tab" data-view="weightView">Weight</button>
+    <button class="tab" data-view="recipeView">Recipes</button>
+  </div>
+
+  <div id="todayView" class="view">
+    <div class="card" id="saved"></div>
+    <div class="card" id="today"></div>
+    <button id="addBtn" class="fab" aria-label="Add food"><!-- batch 11 plus, colours inverted: the FAB has the accent background, so the disc takes --on-accent and the plus stroke takes --accent, rather than the drawn cyan-disc/dark-stroke version used on the grey quantity stepper below. --><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="36" fill="var(--on-accent)"/><path d="M 50 30 L 50 70 M 30 50 L 70 50" stroke="var(--accent)" stroke-width="8" stroke-linecap="round"/></svg></button>
+    <!-- The six entry-method icons (Design Skill batch 01, checked clean 2026-08-24). These sit
+         inline in the markup rather than in a JS constant because this menu is static HTML that
+         never gets re-rendered - no TDZ risk to design around, unlike MEAL_ICONS.
+         Each icon carries its own dark rounded-square ground (fill var(--on-accent)) as its first
+         shape. That is deliberate: the art was drawn for the app's dark card background, but these
+         buttons have an ACCENT (cyan/violet) background, so without a ground the cyan parts of the
+         art - the whole magnifying glass, most notably - would be invisible against the button.
+         Using var(--on-accent) rather than a fixed hex means the ground follows the mode switch. -->
+    <div id="sheetBackdrop"></div>
+    <div id="addMenu" class="sheet" style="display:none">
+      <button class="addOption" data-mode="photo"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><rect x="14" y="30" width="72" height="52" rx="10" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><path d="M 34 30 L 40 20 L 60 20 L 66 30 Z" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><rect x="66" y="36" width="14" height="9" rx="2" fill="var(--accent)"/><circle cx="50" cy="57" r="18" fill="#17171d" stroke="#0d0d12" stroke-width="3"/><circle cx="50" cy="57" r="11" fill="#3a3f4d"/><circle cx="46" cy="53" r="3.4" fill="#8f96a8"/><path d="M 14 60 L 14 72 A 10 10 0 0 0 24 82 L 40 82 L 40 60 Z" fill="#1e1e26"/></svg><span>Take a photo (reads barcodes too)</span></button>
+      <button class="addOption" data-mode="search"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><circle cx="44" cy="44" r="24" fill="none" stroke="var(--accent)" stroke-width="8"/><line x1="61" y1="61" x2="82" y2="82" stroke="var(--accent)" stroke-width="9" stroke-linecap="round"/><path d="M 34 40 A 14 14 0 0 1 46 28" stroke="#c7e9f0" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8"/></svg><span>Search a food</span></button>
+      <button class="addOption" data-mode="dine"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><rect x="12" y="34" width="76" height="46" rx="9" fill="#3a3f4d" stroke="#0d0d12" stroke-width="3"/><rect x="18" y="40" width="64" height="34" rx="5" fill="#23232b"/><line x1="46" y1="40" x2="46" y2="74" stroke="#3a3f4d" stroke-width="2.5"/><circle cx="34" cy="57" r="9" fill="var(--accent)" opacity="0.9"/><rect x="58" y="47" width="18" height="7" rx="3.5" fill="#7d8296"/><rect x="58" y="58" width="14" height="7" rx="3.5" fill="#7d8296"/></svg><span>Dining hall food</span></button>
+      <button class="addOption" data-mode="desc"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><path d="M 18 20 Q 14 20 14 26 L 14 56 Q 14 62 20 62 L 34 62 L 30 76 L 50 62 L 78 62 Q 84 62 84 56 L 84 26 Q 84 20 78 20 Z" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><circle cx="38" cy="40" r="7" fill="var(--accent)"/><circle cx="58" cy="40" r="7" fill="var(--accent)"/><circle cx="78" cy="40" r="7" fill="var(--accent)"/></svg><span>Describe what I ate</span></button>
+      <button class="addOption" data-mode="manual"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><rect x="18" y="16" width="64" height="68" rx="10" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><g fill="var(--accent)"><rect x="27" y="26" width="14" height="12" rx="3"/><rect x="43" y="26" width="14" height="12" rx="3"/><rect x="59" y="26" width="14" height="12" rx="3"/><rect x="27" y="42" width="14" height="12" rx="3"/><rect x="43" y="42" width="14" height="12" rx="3"/><rect x="59" y="42" width="14" height="12" rx="3"/></g><rect x="27" y="58" width="46" height="12" rx="3" fill="#9a9aa5"/></svg><span>Type numbers myself</span></button>
+      <button id="addCancel" class="grey">Cancel</button>
+    </div>
+    <div class="card entryMethod" id="descCard">
+      <input id="desc" type="text" placeholder="Describe what you ate">
+      <input id="descRestaurant" type="text" placeholder="Restaurant (optional) — e.g. Chipotle">
+      <button id="descBtn">Ask the AI</button>
+    </div>
+    <div class="card entryMethod" id="bcCard">
+      <input id="bc" type="text" inputmode="numeric" placeholder="Barcode number">
+      <button id="lookupBtn">Look up</button>
+    </div>
+    <!-- Real food database search (USDA FoodData Central) - a typed name instead of a
+         photo/barcode/manual guess. Feeds the same per100/portion UI the barcode path uses. -->
+    <div class="card entryMethod" id="searchCard">
+      <input id="foodSearch" type="text" placeholder="Search a food, e.g. banana">
+      <button id="foodSearchBtn">Search</button>
+      <div id="foodSearchResults"></div>
+    </div>
+    <!-- Pick your way down to one item at one of UIUC's dining halls and get its real nutrition
+         numbers. The data is the SAME feed the official Illinois app reads (University Housing's
+         menu service, via dining-menu.js), which matters: the nutrition-label website used before
+         this (EatSmart / NetNutrition) turned out to be missing about a third of what the halls
+         actually serve on a given day. One call brings back the whole hall's day, so every pick
+         after the hall is instant. -->
+    <div class="card entryMethod" id="dineCard">
+      <!-- Meal and day are asked FIRST, before the hall, because they are the two things you
+           already know before you walk in. The three buttons here are the starting guess (the
+           meal it is right now); once the hall's day has loaded they are rebuilt from the meals
+           that hall is really running that day - a Saturday shows "Continental Breakfast", LAR
+           shows its Kosher meals - with your choice carried across. -->
+      <!-- Once an item is picked these four steps fold into #dineSummary ("Lunch · today · Ike ·
+           Don's Chophouse — change"); the chips and the item list stay, because logging four
+           things off one tray is the normal case. Tapping the line re-opens the steps. -->
+      <div id="dineSummary" class="sub" style="display:none;cursor:pointer;padding:8px 0"></div>
+      <div id="dineWalk">
+      <div class="sub">Which meal?</div>
+      <div id="dineMealRow">
+        <button type="button" class="dmeal" data-meal="Breakfast">Breakfast</button>
+        <button type="button" class="dmeal" data-meal="Lunch">Lunch</button>
+        <button type="button" class="dmeal" data-meal="Dinner">Dinner</button>
+      </div>
+      <div class="sub" id="dineDayLabel">Which day?</div>
+      <input id="dineDate" type="date">
+      <!-- Values are Housing's own hall ids (its DiningOptionID), NOT the old NetNutrition ones. -->
+      <select id="dineHall">
+        <option value="">Pick a dining hall or store</option>
+        <optgroup label="Dining halls">
+        <option value="1">Ikenberry (Ike)</option>
+        <option value="3">ISR</option>
+        <option value="2">PAR</option>
+        <option value="5">Lincoln/Allen (LAR)</option>
+        </optgroup>
+        <!-- Housing's à-la-carte spots — they take Dining Dollars and are in the same feed. Three
+             of them (57 North, TerraByte, Urbana South Market) list their food with no nutrition
+             behind it; the item handler offers the food database and the AI for those. -->
+        <optgroup label="Cafés &amp; stores (Dining Dollars)">
+        <option value="7">57 North (Ike)</option>
+        <option value="9">Caffeinator (Ike)</option>
+        <option value="18">TerraByte (ISR)</option>
+        <option value="30">InfiniTEA (ISR)</option>
+        <option value="14">Urbana South Market (PAR)</option>
+        <option value="6">Corner Cafe (FAR)</option>
+        </optgroup>
+      </select>
+      <!-- Only the stations serving the chosen meal that day are listed. -->
+      <select id="dineStation" style="display:none"><option value="">Pick a station</option></select>
+      </div>
+      <!-- Things logged before AT THIS STATION, as one-tap chips. Only drawn once a station is
+           picked and only for that station (Owen, 11 Sep: the old all-in-one list at the top of
+           the card was clutter). -->
+      <div id="dineRecents"></div>
+      <select id="dineItem" style="display:none"><option value="">Pick an item</option></select>
+      <div class="sub" id="dineNote"></div>
+      <!-- Drinks. Kept behind a toggle so it does not clutter the food walk above, but it sits
+           inside the dining card because that is where you are when you fill a cup. Nothing
+           here talks to Illinois's site - fountain drinks are sold by VOLUME, so a per-ounce
+           figure times your cup size is the whole calculation. -->
+      <button id="dineDrinkToggle" class="grey" style="display:none">Add a drink</button>
+      <div id="dineDrinkPanel" style="display:none">
+        <!-- The cup settings are one line until tapped, so the 26 drinks start near the top. -->
+        <div class="sub" id="cupSummary" style="cursor:pointer;padding:6px 0"></div>
+        <div id="cupSettings" style="display:none">
+        <div class="sub" id="cupLabel">Cup size</div>
+        <div id="cupRow">
+          <input id="dineCupOz" type="number" min="1" max="64" step="1" inputmode="decimal">
+          <span class="sub">fl oz</span>
+        </div>
+        <label id="iceRow"><input type="checkbox" id="dineIce"> Filled with ice first</label>
+        <div class="sub" id="dineFillNote"></div>
+        </div>
+        <div id="drinkList"></div>
+        <div class="sub" id="drinkSource"></div>
+      </div>
+    </div>
+    <div class="card" id="portion" style="display:none">
+      <div id="portionName"></div>
+      <input id="grams" type="number" min="0" placeholder="grams">
+      <button id="usePortion">Use this amount</button>
+    </div>
+    <div class="entryMethod" id="photoCard">
+      <label for="photo" class="photobtn">Take a photo</label>
+      <input type="file" accept="image/*" capture="environment" id="photo">
+    </div>
+    <button id="manualBtn" style="display:none">Type numbers myself</button>
+    <!-- Shown only when the AI has actually given up. Google's servers get overloaded and there
+         is nothing this app can do about that from the outside, so the answer is not a cleverer
+         wait - it is making sure a busy AI never blocks logging a meal. Every button here
+         reaches the same food log by a route that never touches Google. -->
+    <div class="card" id="aiFallback" style="display:none">
+      <div class="sub" id="aiFallbackWhy"></div>
+      <div class="btnStack" style="margin-top:8px">
+        <button id="fbRetry">Try the AI again</button>
+        <button id="fbManual" class="grey">Type the numbers myself</button>
+        <button id="fbSearch" class="grey">Search the food database</button>
+        <button id="fbBarcode" class="grey">Type a barcode number</button>
+        <button id="fbSaved" class="grey">Pick one of my saved meals</button>
+      </div>
+    </div>
+    <img id="preview">
+    <div class="card" id="editor" style="display:none">
+      <input id="fName" placeholder="Meal name">
+      <div class="nums">
+        <input id="fKcal" type="number" min="0" placeholder="kcal">
+        <input id="fProtein" type="number" min="0" placeholder="protein g">
+        <input id="fFat" type="number" min="0" placeholder="fat g">
+        <input id="fCarbs" type="number" min="0" placeholder="carbs g">
+      </div>
+      <div class="mealhead">Photo</div>
+      <div class="sub" id="fPhotoHint">Required — so the app can recognise this food from a photo later.</div>
+      <img id="fPhotoPreview" style="display:none">
+      <label for="fPhoto" class="photobtn">Take a photo</label>
+      <input type="file" accept="image/*" capture="environment" id="fPhoto">
+      <button id="confirmSave">Save meal</button>
+      <button id="cancelSave" class="grey">Cancel</button>
+    </div>
+    <div id="logBtns" style="display:none">
+      <!-- What was picked, right next to the buttons that act on it. Before this the only place
+           the app said what you had chosen was the status line at the TOP of the page, two
+           screens above these buttons on a phone (11 Sep usability review, finding 1). -->
+      <div class="card" id="pendingSummary"></div>
+      <!-- Lives under the summary now (it used to float above the panel, cut off from the food
+           it saves), so the order reads: what you picked, save it, how many, which meal. -->
+      <button id="saveBtn" class="grey" style="display:none">Save these numbers</button>
+<div class="sub">How many?</div>
+      <div id="qtyRow">
+        <button id="qtyMinus" type="button" class="grey" aria-label="One fewer"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="36" fill="#3a3f4d"/><path d="M 30 50 L 70 50" stroke="var(--text)" stroke-width="8" stroke-linecap="round"/></svg></button>
+        <input id="qtyInput" type="number" min="0.25" inputmode="decimal" step="0.5" value="1">
+        <button id="qtyPlus" type="button" class="grey" aria-label="One more"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="36" fill="var(--accent)"/><path d="M 50 30 L 50 70 M 30 50 L 70 50" stroke="var(--on-accent)" stroke-width="8" stroke-linecap="round"/></svg></button>
+      </div>
+      <!-- When the food came from the dining card, the meal was already chosen there, so it is
+           asked ONCE: one big "Log to Lunch" button, with the four-way choice behind a link. -->
+      <button id="logSuggested" style="display:none"></button>
+      <button id="logOtherMeal" class="grey" style="display:none">Different meal</button>
+      <div id="mealChoice">
+      <button class="meal">Breakfast</button>
+      <button class="meal">Lunch</button>
+      <button class="meal">Dinner</button>
+      <button class="meal">Snack</button>
+      </div>
+      <!-- The four meal buttons were the only way out of this panel: tapping a saved meal by
+           mistake left you stuck picking a meal for food you had not eaten, with nothing to
+           press that did not log something. -->
+      <button id="cancelLog" class="grey">Cancel</button>
+    </div>
+  </div>
+
+  <div id="historyView" class="view" style="display:none">
+    <div class="card" id="history">Nothing logged yet</div>
+  </div>
+
+  <div id="weightView" class="view" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <b style="font-size:18px">Weight</b>
     </div>
     <div class="card" id="advice"></div>
     <div class="card">
@@ -517,22 +676,31 @@ button:disabled { opacity: 0.5; }
       </div>
       <div class="card" id="recentWorkouts"></div>
       <div class="card" id="wSexNote"></div>
+      <!-- These fold to their heading (Owen, 11 Sep) and remember whether he opened them. The
+           streak, recent workouts and the body map stay open. -->
       <div class="card" id="rankTrendCard">
-        <b>Overall score over time</b>
+        <button type="button" class="secHead progHead" data-prog="rankTrendBody">Overall score over time</button>
+        <div id="rankTrendBody" class="progBody" style="display:none">
         <div class="sub">Your whole-body score recalculated as it stood on each day you trained - using only the workouts and the bodyweight you had logged by then.</div>
         <div id="rankTrend"></div>
+        </div>
       </div>
       <div class="card" id="volumeCard">
-        <b>Volume by muscle group</b>
+        <button type="button" class="secHead progHead" data-prog="volumeBody">Volume by muscle group</button>
+        <div id="volumeBody" class="progBody" style="display:none">
         <div class="sub">Total weight moved per week, last 8 weeks. A set counts toward every muscle the exercise trains, so these do not sum to your total.</div>
         <div id="volumeChart"></div>
+        </div>
       </div>
       <div class="card" id="bodyMapCard">
         <b>By muscle group</b>
         <div class="sub">Averages the rank of every exercise you log that trains that muscle. Front and back view — tap a region to jump to its exercises below.</div>
         <div id="bodyMap"></div>
       </div>
-      <div class="card" id="wRankList"></div>
+      <div class="card" id="rankListCard">
+        <button type="button" class="secHead progHead" data-prog="wRankList">Your lifts, ranked</button>
+        <div id="wRankList" class="progBody" style="display:none"></div>
+      </div>
     </div>
 
     <div id="wLibrarySub" class="wview" style="display:none">
@@ -704,6 +872,14 @@ button:disabled { opacity: 0.5; }
     }
     const photo = document.getElementById('photo');
     const preview = document.getElementById('preview');
+    const fPhotoHint = document.getElementById('fPhotoHint');
+    const aiFallback = document.getElementById('aiFallback');
+    const aiFallbackWhy = document.getElementById('aiFallbackWhy');
+    const fbRetry = document.getElementById('fbRetry');
+    const fbManual = document.getElementById('fbManual');
+    const fbSearch = document.getElementById('fbSearch');
+    const fbSaved = document.getElementById('fbSaved');
+    const searchCard = document.getElementById('searchCard');
     const statusEl = document.getElementById('status');
     const debugEl = document.getElementById('debug');
 const undoBar = document.getElementById('undoBar');
@@ -767,6 +943,7 @@ async function safeFetch(url, opts) {
     const savedEl = document.getElementById('saved');
     const saveBtn = document.getElementById('saveBtn');
     const logBtns = document.getElementById('logBtns');
+    const cancelLog = document.getElementById('cancelLog');
     const editor = document.getElementById('editor');
     const fName = document.getElementById('fName');
     const fKcal = document.getElementById('fKcal');
@@ -800,6 +977,28 @@ async function safeFetch(url, opts) {
       });
     }
     chainEnter(['fName', 'fKcal', 'fProtein', 'fFat', 'fCarbs'], function () { confirmSave.click(); });
+
+    const DEFAULT_PHOTO_HINT = 'Required — so the app can recognise this food from a photo later.';
+    // True only while saving a meal that was ALREADY logged (from Today or History). That is
+    // the one route with no photo to inherit, because the food log stores numbers and not
+    // pictures - keeping a copy of the photo on every logged entry would fill localStorage in
+    // a couple of weeks. So the photo gate in confirmSave is relaxed for this route alone.
+    let savingFromLog = false;
+
+    // The single way into the editor. It exists because the editor is opened from four
+    // different places, and the two things that vary by route - whether a photo is required,
+    // and what the hint under "Photo" says - kept having to be remembered separately.
+    function openEditor(fromLog) {
+      savingFromLog = !!fromLog;
+      fPhotoHint.textContent = fromLog
+        ? 'Optional here — without one the app cannot recognise this meal from a photo later, but you can add one any time from Saved meals.'
+        : DEFAULT_PHOTO_HINT;
+      // The picture the entry flow put on screen and the one inside the editor are the SAME
+      // photo. Showing both made the screen twice as long and looked like the app had
+      // duplicated it. One image, always - the editor's, since that is the one being saved.
+      preview.style.display = 'none';
+      editor.style.display = 'block';
+    }
 
     function setSavePhoto(b64) {
       savePhoto = b64 || null;
@@ -983,6 +1182,12 @@ async function safeFetch(url, opts) {
         + '<path d="M 20 92 L 26 78 L 34 86 Z" fill="' + edge + '"/>';
     }
     const ICON_PENCIL = chromeIcon(pencilBody('var(--accent)', '#c7e9f0', '#06636e'));
+    // "Save this to my meals" - a bookmark ribbon with a plus in it. Outline rather than a
+    // filled shape so it sits at the same visual weight as the pencil beside it, and accent
+    // rather than danger because it adds something.
+    const ICON_BOOKMARK = chromeIcon(
+      '<path d="M 28 12 L 72 12 C 76 12 79 15 79 19 L 79 90 L 50 71 L 21 90 L 21 19 C 21 15 24 12 28 12 Z" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linejoin="round"/>'
+      + '<path d="M 50 29 L 50 55 M 37 42 L 63 42" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"/>');
     const ICON_PENCIL_ON_ACCENT = chromeIcon(pencilBody('var(--on-accent)', '#e6edf2', 'var(--on-accent)'));
     // Chevrons. The right-facing one is the drawn artwork; the left-facing one is its arithmetic
     // mirror about x=50 (50*2 - x), not a hand-guessed second path - the same rule the icon work
@@ -1081,7 +1286,8 @@ async function safeFetch(url, opts) {
     // with its neighbour no matter what moved.
     let editingMeal = null;
     let warned = false;
-    let savedOpen = true;
+    // Above Today, but CLOSED on every load (Owen, 11 Sep) so the day's numbers come first.
+    let savedOpen = false;
     let savedQuery = '';
 let qty = 1;
     // The photo just taken with the camera input, held here so whichever saved-meal path it
@@ -1116,6 +1322,9 @@ let qty = 1;
   // next character -- and on iOS it also cut off autocorrect mid-word.
   const prevSearch = document.getElementById('savedSearch');
   const prevCaret = prevSearch ? prevSearch.selectionStart : null;
+  // Only put focus back if the box HAD it. Unconditional focus opened the iPhone keyboard on
+  // every redraw — after every save and every delete — pushing the buttons he needed under it.
+  const hadFocus = !!prevSearch && document.activeElement === prevSearch;
   let html = '<div style="display:flex;justify-content:space-between;align-items:center">' +
     '<b>Saved meals (' + meals.length + ')</b>' +
     '<button id="savedToggle" class="grey">' + (savedOpen ? 'Hide' : 'Show') + '</button></div>';
@@ -1133,7 +1342,7 @@ let qty = 1;
   }
   savedEl.innerHTML = html;
   const s = document.getElementById('savedSearch');
-  if (s) {
+  if (s && hadFocus) {
     s.focus();
     const at = prevCaret == null ? s.value.length : Math.min(prevCaret, s.value.length);
     s.setSelectionRange(at, at);
@@ -1144,6 +1353,7 @@ let qty = 1;
       const file = photo.files[0];
       if (!file) return;
       preview.src = URL.createObjectURL(file);
+      preview.style.display = '';   // openEditor() hides it again once the editor takes over
       editor.style.display = 'none';
       portion.style.display = 'none';
       statusEl.textContent = 'Checking for a barcode...';
@@ -1173,6 +1383,13 @@ let qty = 1;
     const addBtn = document.getElementById('addBtn');
     const addMenu = document.getElementById('addMenu');
     const addCancel = document.getElementById('addCancel');
+    const sheetBackdrop = document.getElementById('sheetBackdrop');
+    // The sheet and its dimmed backdrop always move together; tapping the backdrop is Cancel.
+    function setSheet(open) {
+      addMenu.style.display = open ? 'block' : 'none';
+      sheetBackdrop.style.display = open ? 'block' : 'none';
+    }
+    sheetBackdrop.addEventListener('click', function () { setSheet(false); });
     addBtn.addEventListener('click', function () {
       document.querySelectorAll('.entryMethod').forEach(function (el) { el.style.display = 'none'; });
       // Close any half-finished EDIT as well. #editor is class="card", not
@@ -1184,27 +1401,105 @@ let qty = 1;
       editingMeal = null;
       editor.style.display = 'none';
       setSavePhoto(null);
-      addMenu.style.display = 'block';
+      setSheet(true);
       lastPhotoTaken = null;
     });
     addCancel.addEventListener('click', function () {
-      addMenu.style.display = 'none';
+      setSheet(false);
     });
     document.querySelectorAll('.addOption').forEach(function (b) {
       b.addEventListener('click', function () {
-        addMenu.style.display = 'none';
+        setSheet(false);
         if (b.dataset.mode === 'manual') {
           manualBtn.click();
           return;
         }
         const cardIds = { photo: 'photoCard', bc: 'bcCard', search: 'searchCard', dine: 'dineCard', desc: 'descCard' };
-        document.getElementById(cardIds[b.dataset.mode] || 'descCard').style.display = 'block';
+        const card = document.getElementById(cardIds[b.dataset.mode] || 'descCard');
+        card.style.display = 'block';
+        // The card opens below the whole Today card, about 900px down on a phone; bring it up
+        // so the thing he just asked for is what he is looking at (usability review, 4).
+        if (card.scrollIntoView) card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        if (b.dataset.mode === 'dine') {
+          // Re-set to today and the current meal every time the card is opened. Left alone, a
+          // card opened at breakfast still said "Breakfast" at dinner, and the auto-match would
+          // then quietly land on the wrong meal.
+          dineResetPicks();
+          if (dineHall.value) dineLoadDay();
+        }
+        if (b.dataset.mode === 'photo') {
+          // Open the camera right here instead of showing a card whose only content is a
+          // second "Take a photo" button. This .click() has to happen inside this handler:
+          // iOS only lets a file picker open during a real tap, so moving it into a timeout
+          // or an await would make it silently do nothing.
+          // Clearing .value first matters too - picking the same file twice in a row fires no
+          // change event otherwise, so a retake of the same shot would look like a freeze.
+          photo.value = '';
+          photo.click();
+        }
       });
     });
 
-    async function callGemini(parts, instructions, schema) {
+    // --- Riding out a busy Gemini -------------------------------------------------------
+    // Google's own servers get overloaded and answer 503 instead of doing the work. The old
+    // code waited 2 seconds, tried once more, then gave up - which in practice meant a meal
+    // could not be logged at all until Google felt better.
+    //
+    // Two changes. First, wait properly: four retries with the delay DOUBLING each time
+    // (1s, 2s, 4s, 8s - "exponential backoff", the standard way to ride out an overloaded
+    // server). A short first wait catches the common one-second blip; the long ones give a
+    // genuinely swamped server room without hammering it. Second, and this is the part that
+    // actually matters: when it still fails, put the routes that DON'T need Google on screen
+    // instead of printing an error and stopping.
+    const AI_RETRY_DELAYS = [1000, 2000, 4000, 8000];
+
+    // 429 = too many requests from us. 500/502/503 = Google's problem, not ours. All four clear
+    // on their own if you wait. A bad key or a malformed request never will, so retrying those
+    // just burns time - they fall straight through to the message.
+    function isBusyCode(code) {
+      return code === 429 || code === 500 || code === 502 || code === 503;
+    }
+
+    // Counts the wait down out loud. Without this an 8-second pause is indistinguishable from
+    // the app having frozen - and the status line fades itself after 3 seconds of no change.
+    function waitWithCountdown(ms, attemptNo, totalAttempts) {
+      return new Promise(function (res) {
+        let left = Math.round(ms / 1000);
+        function tick() {
+          statusEl.textContent = 'Google is busy — trying again in ' + left + 's (try ' +
+            attemptNo + ' of ' + totalAttempts + ')';
+        }
+        tick();
+        const iv = setInterval(function () { left -= 1; if (left > 0) tick(); }, 1000);
+        setTimeout(function () { clearInterval(iv); res(); }, ms);
+      });
+    }
+
+    // The last AI call that failed, so the "Try the AI again" button can repeat it without
+    // making you re-take the photo or re-type the description.
+    let lastAiRetry = null;
+
+    // Puts the "log it another way" card on screen. `why` is the one line above the buttons,
+    // so the same card serves a busy AI, a missing key and a dead connection.
+    function offerManualFallback(why) {
+      aiFallbackWhy.textContent = why || 'The AI is not answering right now — you do not have to wait for it.';
+      fbRetry.style.display = lastAiRetry ? 'block' : 'none';
+      aiFallback.style.display = 'block';
+    }
+    function hideManualFallback() {
+      aiFallback.style.display = 'none';
+    }
+
+    async function callGemini(parts, instructions, schema, attempt) {
+      attempt = attempt || 0;
+      if (!attempt) hideManualFallback();
       const key = await ensureApiKey();
-      if (!key) { statusEl.textContent = 'Add a Gemini API key to use AI food recognition — try again to enter one.'; return null; }
+      if (!key) {
+        statusEl.textContent = 'Add a Gemini API key to use AI food recognition — try again to enter one.';
+        lastAiRetry = null;
+        offerManualFallback('No AI key, so photo and describe-it entry are off — these three still work.');
+        return null;
+      }
       const r = await safeFetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
         method: 'POST',
         headers: {
@@ -1219,13 +1514,26 @@ let qty = 1;
           }
         })
       });
-if (!r) return null;
-      const data = await r.json();
-      if (data.error && data.error.code === 503 && !parts.retried) {
-        statusEl.textContent = 'Google is busy — retrying...';
-        await new Promise(function (res) { setTimeout(res, 2000); });
-        parts.retried = true;
-        return callGemini(parts, instructions, schema);
+      // safeFetch has already said what went wrong (offline, timed out, unreachable). All this
+      // adds is the way out.
+      if (!r) {
+        lastAiRetry = function () { return callGemini(parts, instructions, schema); };
+        offerManualFallback('Could not reach the AI at all.');
+        return null;
+      }
+      // A 503 does not always come back as JSON - an overloaded front end can answer with an
+      // HTML error page, and .json() then throws where nothing was catching it, killing the
+      // entry silently. Fall back to the HTTP status so "busy" is still recognised as busy.
+      let data;
+      try {
+        data = await r.json();
+      } catch (e) {
+        data = { error: { code: r.status, message: r.statusText || 'unreadable reply from Google' } };
+      }
+      if (data.error && isBusyCode(data.error.code) && attempt < AI_RETRY_DELAYS.length) {
+        await waitWithCountdown(AI_RETRY_DELAYS[attempt], attempt + 2, AI_RETRY_DELAYS.length + 1);
+        statusEl.textContent = 'Thinking...';
+        return callGemini(parts, instructions, schema, attempt + 1);
       }
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 if (data.error && /API key/i.test(data.error.message || '')) {
@@ -1235,19 +1543,30 @@ if (data.error && /API key/i.test(data.error.message || '')) {
     // had just been rejected and repeated the same message until the page was
     // reloaded.
     apiKey = null;
-    statusEl.textContent = 'Your API key looks wrong — reload the page to enter a new one';
+    showKeyStates();   // the Settings → Keys row still said "set" otherwise
+    statusEl.textContent = 'Your Gemini key was rejected and has been cleared — the next photo or description will ask for a new one, or set it under Settings → Keys';
     return null;
   }
       if (!text) {
+        // Whatever went wrong, the food still needs logging - so every branch here ends with
+        // the fallback card rather than a dead end.
+        lastAiRetry = function () { return callGemini(parts, instructions, schema); };
         if (data.error) {
-          statusEl.textContent = data.error.code === 503
-            ? 'Google is busy right now — try again in a few seconds'
-            : 'Gemini error ' + data.error.code + ': ' + data.error.message;
+          if (isBusyCode(data.error.code)) {
+            statusEl.textContent = 'Google is still busy after ' + (AI_RETRY_DELAYS.length + 1) +
+              ' tries — log it one of the ways below instead.';
+            offerManualFallback('Google\'s servers are overloaded. That is at their end, not yours, and it usually clears within a few minutes — but none of these need the AI.');
+          } else {
+            statusEl.textContent = 'Gemini error ' + data.error.code + ': ' + data.error.message;
+            offerManualFallback('The AI refused that request.');
+          }
         } else {
           statusEl.textContent = JSON.stringify(data).slice(0, 1000);
+          offerManualFallback('The AI sent back something the app could not read.');
         }
         return null;
       }
+      hideManualFallback();
       debugEl.textContent = text;
       try {
         return JSON.parse(text);
@@ -1424,7 +1743,14 @@ if (data.error && /API key/i.test(data.error.message || '')) {
         '.json?fields=product_name,brands,nutriments,serving_size,serving_quantity,nutrition_data_per';
       const r = await safeFetch(url);
   if (!r) return;
-  const data = await r.json();
+  // Open Food Facts sometimes answers with an HTML error page (a Cloudflare 5xx or a maintenance
+  // page). .json() on that throws, and before this guard the throw escaped the click handler
+  // and left the Look up button disabled for the rest of the session (11 Sep sweep).
+  let data;
+  try { data = await r.json(); } catch (e) {
+    statusEl.textContent = 'Open Food Facts is not answering properly — try again in a minute, or type the numbers in yourself';
+    return;
+  }
       debugEl.textContent = JSON.stringify(data).slice(0, 600);
       if (!data.product) {
         statusEl.textContent = 'Not in Open Food Facts — type the numbers in yourself';
@@ -1434,7 +1760,8 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       const n = p.nutriments || {};
       per100 = {
         name: (p.brands ? p.brands + ' ' : '') + (p.product_name || 'Unnamed'),
-        kcal: n['energy-kcal_100g'] || 0,
+        // European labels often carry only kJ; 0 kcal here logged a whole item as nothing.
+        kcal: n['energy-kcal_100g'] || Math.round((n['energy-kj_100g'] || n.energy_100g || 0) / 4.184),
         protein: n.proteins_100g || 0,
         fat: n.fat_100g || 0,
         carbs: n.carbohydrates_100g || 0
@@ -1473,8 +1800,7 @@ if (data.error && /API key/i.test(data.error.message || '')) {
   if (!bc.value) return;
   lastPhotoTaken = null; // typed barcode, not photographed — this save will need its own photo
   lookupBtn.disabled = true;
-  await lookup(bc.value.trim());
-  lookupBtn.disabled = false;
+  try { await lookup(bc.value.trim()); } finally { lookupBtn.disabled = false; }
 });
 
     // --- Food search (USDA FoodData Central) ---
@@ -1493,12 +1819,18 @@ if (data.error && /API key/i.test(data.error.message || '')) {
     const foodSearchBtn = document.getElementById('foodSearchBtn');
     const foodSearchResults = document.getElementById('foodSearchResults');
 
+    // Asks ONCE. Skipping used to be forgotten, so the box came back on every single search
+    // (Owen, 2026-09-11: "there is a prompt to enter that when I use the food lookup"). Now a
+    // skip is remembered and the shared DEMO_KEY is used quietly. Both keys can be set or
+    // changed later under Settings, so the one-time box is never the only way in.
     async function ensureUsdaKey() {
       let key = localStorage.getItem('usdaKey');
       if (key) return key;
-      key = await askForText('Food search key (optional)', 'A free key from api.data.gov/signup raises the search limit from 10 lookups/hour to 1,000/hour. Skip this to use a shared, more limited key instead — search still works either way.', 'Paste your USDA API key');
-      if (key) store('usdaKey', key);
-      return key || 'DEMO_KEY';
+      if (localStorage.getItem('usdaKeySkipped')) return 'DEMO_KEY';
+      key = await askForText('Food search key (optional)', 'A free key from api.data.gov/signup (name and email, arrives by email in a minute) lifts the search limit from a shared 30 an hour / 50 a day to 1,000 an hour. Skip this and search still works on the shared limit; you can add a key later under Settings.', 'Paste your USDA API key');
+      if (key) { store('usdaKey', key); return key; }
+      try { localStorage.setItem('usdaKeySkipped', '1'); } catch (e) { /* best effort */ }
+      return 'DEMO_KEY';
     }
 
     function nutrientValue(foodNutrients, id) {
@@ -1541,7 +1873,11 @@ if (data.error && /API key/i.test(data.error.message || '')) {
         statusEl.textContent = 'Search key rejected or rate-limited — try again shortly, or add your own free key at api.data.gov/signup';
         return;
       }
-      const data = await r.json();
+      let data;
+      try { data = await r.json(); } catch (e) {
+        statusEl.textContent = 'The food database is not answering properly — try again in a minute';
+        return;
+      }
       const foods = (data.foods || []).map(parseUsdaFood).filter(function (f) { return f.kcal || f.protein || f.fat || f.carbs; });
       if (!foods.length) {
         foodSearchResults.innerHTML = '<div class="sub">No matches — try a simpler search term.</div>';
@@ -1550,7 +1886,7 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       }
       foodSearchResults._foods = foods;
       foodSearchResults.innerHTML = foods.map(function (f, i) {
-        return '<div class="row"><span class="quick" data-i="' + i + '">' + f.name + '</span><span>' +
+        return '<div class="row"><span class="quick" data-i="' + i + '">' + esc(f.name) + '</span><span>' +
           Math.round(f.kcal) + ' kcal/100g</span></div>';
       }).join('');
       statusEl.textContent = foods.length + ' matches — tap one';
@@ -1570,81 +1906,180 @@ if (data.error && /API key/i.test(data.error.message || '')) {
 
     // --- UIUC dining hall lookup ---
     // Same idea as the barcode/restaurant paths: real published numbers instead of an AI guess.
-    // The chain is Hall -> Station -> Date+Meal -> Item, matching how the food is actually laid
-    // out in the dining hall itself. Each step calls the dining-proxy Netlify Function, which
-    // replays every pick made so far inside one real background browser (see that file for why a
-    // real browser is needed at all, and why the whole path is replayed on every call — short
-    // version: UIUC's site blocks plain server requests, and its deeper steps need a session that
-    // actually walked through the earlier ones first). Full API shape and the discovery process
-    // are recorded in Calorie App notes.md, 2026-08-22.
+    //
+    // WHERE THE DATA COMES FROM, because it changed on 2026-09-10 and the reason matters.
+    // The first version read Illinois's nutrition-label website (EatSmart / NetNutrition).
+    // Owen kept finding that the foods it listed for a day were not what the hall was serving.
+    // Checked against every Ikenberry station on 10 Sep: that site was missing 42 of the 142
+    // items served that day. Not an app bug — the site itself did not have them. The official
+    // Illinois app reads a different feed, run by University Housing, and that one had all 142.
+    // So this now reads Housing's feed through dining-menu.js (a tiny pass-through — see that
+    // file for the two endpoints). One call returns the WHOLE hall for the WHOLE day: every
+    // station, every meal, every item. Everything after picking the hall is a filter on that
+    // one answer, and the only other call is the item's own label when it is finally chosen.
     const dineHall = document.getElementById('dineHall');
     const dineStation = document.getElementById('dineStation');
-    const dineMeal = document.getElementById('dineMeal');
+    const dineDate = document.getElementById('dineDate');
+    const dineMealRow = document.getElementById('dineMealRow');
+    const dineDayLabel = document.getElementById('dineDayLabel');
+    const dineDrinkToggle = document.getElementById('dineDrinkToggle');
+    const dineDrinkPanel = document.getElementById('dineDrinkPanel');
+    const dineCupOz = document.getElementById('dineCupOz');
+    const dineIce = document.getElementById('dineIce');
+    const dineFillNote = document.getElementById('dineFillNote');
+    const drinkList = document.getElementById('drinkList');
+    const drinkSource = document.getElementById('drinkSource');
+    const cupLabel = document.getElementById('cupLabel');
     const dineItem = document.getElementById('dineItem');
     const dineNote = document.getElementById('dineNote');
-    const DINE_ERR = 'Could not reach the dining hall site — try again, or type the numbers in yourself.';
-    // The steps picked so far this lookup, replayed in full on every call (see dining-proxy.js).
-    let dinePath = [];
+    const DINE_ERR = 'Could not reach the dining hall menu — try again, or type the numbers in yourself.';
+    // The hall's day as last loaded: { hall, day, rows } or null. Every dropdown reads from it.
+    let dineDayRows = null;
+    // The meal Owen wants, as a word: what he tapped, or the clock's guess. Kept separately from
+    // the button that is lit, because the buttons get rebuilt from the data once it arrives and
+    // "Breakfast" may have to land on "Continental Breakfast".
+    let dineWantMeal = null;
 
-    // --- Dining lookups: a day-scoped cache, and a recents list ---------------------------
+    // Housing's feed lists a few courses that are kitchen bookkeeping, not food on the line.
+    // Its own menu page hides exactly these, so this does too.
+    const DINE_HIDE_COURSES = ['Parstocks', 'Paper Supplies', 'Add-Ons', 'Leftovers/Runouts', 'Order Ahead Sales', 'ALC Modifiers'];
+    // The order meals are shown in when a hall runs more than the plain three. Anything not
+    // listed goes after these, alphabetically, so a new meal name still shows up.
+    const DINE_MEAL_ORDER = ['Breakfast', 'Continental Breakfast', 'Lunch', 'Light Lunch', 'Kosher Lunch',
+                             'Field of Greens', 'Dinner', 'Kosher Dinner', 'Daily Menu', 'Retail Offerings'];
+
+    // Trims a raw feed row down to the six things the dropdowns need. The raw rows carry
+    // allergen strings and ids the app never uses, and a hall-day is ~140 of them; slimming
+    // them keeps the cache at a few KB instead of fifty. A row with no station belongs to the
+    // hall itself (Housing's own page does the same substitution).
+    function dineSlimRows(raw, hallName) {
+      return (Array.isArray(raw) ? raw : []).filter(function (r) {
+        return r && r.FormalName && DINE_HIDE_COURSES.indexOf(r.Course) === -1;
+      }).map(function (r) {
+        return {
+          su: r.ServingUnit == null || r.ServingUnit === 'null' ? hallName : String(r.ServingUnit),
+          meal: String(r.Meal || ''),
+          course: String(r.Course || 'Other'),
+          sort: Number(r.CourseSort) || 0,
+          name: String(r.FormalName).trim(),
+          id: String(r.ItemID)
+        };
+      });
+    }
+
+    // --- Dining lookups: a short-lived menu cache, a day-long label cache, a recents list ---
     //
-    // WHY. Every dropdown fires its own call, and each call launches a fresh headless browser on
-    // the server (serverless functions keep nothing between invocations). Picking hall, station,
-    // meal and item was therefore FOUR browser launches for one item, and logging three things
-    // off the same dinner was six or seven. That is the whole reason the lookup felt slow -- it
-    // was never one slow request, it was several unavoidable ones stacked up.
+    // The menu for a hall-day is cached for 30 MINUTES, not the whole day. This is a deliberate
+    // change from the first version: the complaint that started all this was the app showing
+    // food the hall was not serving, and a menu cached at breakfast that ignores a change the
+    // kitchen made at noon would be that same problem in new clothes. A refetch is one call of
+    // about 50 ms now, so thirty minutes is cheap insurance. Nutrition labels are recipes and
+    // do not change within a day, so those are cached for the day.
     //
-    // Three of those four answers barely change: which stations a hall has, which meals a station
-    // is serving, and what is on that meal. They are fixed for the day. So they get cached
-    // against today's date, and the cache is thrown away whole the moment the date changes --
-    // simpler and safer than trying to expire entries individually, and it means a stale menu can
-    // never outlive the day it belonged to. The per-item nutrition label is cached the same way.
+    // Both are keyed under today's date and thrown away whole when the date changes — simpler
+    // and safer than expiring entries one at a time.
     //
     // The cache is BEST EFFORT and deliberately does not go through store(): a failed cache write
     // must never pop the "STORAGE FULL" alert at him, because nothing has actually been lost.
     // Real data always wins the space.
+    const DINE_MENU_TTL_MS = 30 * 60 * 1000;
     function dineCache() {
       const c = loadJSON('dineCache', null);
-      if (!c || c.day !== todayKey()) return { day: todayKey(), stations: {}, menus: {}, items: {}, nutrition: {} };
+      // `menus` and `nutrition` are the only two kinds now; an older cache with the retired
+      // `stations`/`items` kinds is simply replaced.
+      if (!c || c.day !== todayKey() || !c.menus || !c.nutrition) return { day: todayKey(), menus: {}, nutrition: {} };
       return c;
     }
     function dineCacheGet(kind, key) {
       const c = dineCache();
-      return c[kind] && Object.prototype.hasOwnProperty.call(c[kind], key) ? c[kind][key] : null;
+      if (!c[kind] || !Object.prototype.hasOwnProperty.call(c[kind], key)) return null;
+      const v = c[kind][key];
+      if (kind === 'menus' && (!v || typeof v.at !== 'number' || Date.now() - v.at > DINE_MENU_TTL_MS)) return null;
+      return v;
     }
     function dineCacheSet(kind, key, value) {
       const c = dineCache();
       c[kind][key] = value;
       try { localStorage.setItem('dineCache', JSON.stringify(c)); } catch (e) { /* best effort */ }
     }
-
     // Recently logged dining-hall foods, newest first. Re-logging one costs ZERO calls, because
     // the numbers were already read off the label the first time. This is the real answer to
     // "logging takes ages" for someone eating at the same four halls all semester: the fastest
     // lookup is the one that does not happen.
-    let dineRecents = loadJSON('dineRecents', []);
-    const DINE_RECENTS_MAX = 12;
+    //
+    // Organised BY STATION (Owen, 11 Sep). Each entry carries the hall and station it was logged
+    // at, and the chips are only drawn once that station is picked — so the grill's list shows at
+    // the grill and nowhere else. Entries from before this change have no station field; their
+    // station is read back out of the name, which has always ended " — <station>".
+    let dineRecents = loadJSON('dineRecents', []).map(function (r) {
+      if (r.station) return r;
+      const at = String(r.name || '').lastIndexOf(' — ');
+      return Object.assign({}, r, { station: at === -1 ? '' : r.name.slice(at + 3), hall: r.hall || '' });
+    });
+    const DINE_RECENTS_PER_STATION = 8;
+    const DINE_RECENTS_MAX = 60;
 
     function rememberDiningItem(f) {
-      dineRecents = dineRecents.filter(function (r) { return r.name !== f.name; });
-      dineRecents.unshift({ name: f.name, kcal: f.kcal, protein: f.protein, fat: f.fat, carbs: f.carbs });
+      const station = f.station || '';
+      dineRecents = dineRecents.filter(function (r) { return !(r.name === f.name && r.station === station); });
+      dineRecents.unshift({ name: f.name, kcal: f.kcal, protein: f.protein, fat: f.fat, carbs: f.carbs,
+                            hall: f.hall || '', station: station });
+      // Keep the newest few per station, and a sane total, so one busy station cannot push
+      // another's history out.
+      const perStation = {};
+      dineRecents = dineRecents.filter(function (r) {
+        perStation[r.station] = (perStation[r.station] || 0) + 1;
+        return perStation[r.station] <= DINE_RECENTS_PER_STATION;
+      });
       if (dineRecents.length > DINE_RECENTS_MAX) dineRecents.length = DINE_RECENTS_MAX;
       try { localStorage.setItem('dineRecents', JSON.stringify(dineRecents)); } catch (e) { /* best effort */ }
-      showDineRecents();
+      // With no station picked (the menu failed to load) redraw the fallback list, not nothing.
+      if (dineStation.value) showDineRecents(dineStation.value);
+      else if (!dineDayRows) showDineRecentsFallback();
     }
 
-    function showDineRecents() {
-      const el = document.getElementById('dineRecents');
-      if (!el) return;
-      if (!dineRecents.length) { el.innerHTML = ''; return; }
-      el.innerHTML = '<div class="sub" style="margin-bottom:6px">Had it before — tap to log it again, no waiting</div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">' +
-        dineRecents.map(function (r, i) {
+    function dineChipsHtml(list) {
+      return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">' +
+        list.map(function (r) {
           // esc(): these names come off a real menu and contain apostrophes and ampersands.
-          return '<button type="button" class="dineAgain grey" data-i="' + i + '" ' +
+          // The chip is keyed by the entry's position in the FULL list, not the filtered one.
+          return '<button type="button" class="dineAgain grey" data-i="' + dineRecents.indexOf(r) + '" ' +
             'style="padding:8px 10px;min-height:44px;font-size:12px;text-align:left">' +
             esc(r.name.split(' — ')[0]) + '<br><span style="opacity:.7">' + Math.round(r.kcal) + ' kcal</span></button>';
         }).join('') + '</div>';
+    }
+    // Chips are filtered by hall as well as station, so a "Grill" at two halls does not show the
+    // other hall's food. Entries from before halls were recorded (hall '') match any hall.
+    function dineRecentsAt(station) {
+      const hallName = dineHall.value ? dineHall.options[dineHall.selectedIndex].textContent : '';
+      return dineRecents.filter(function (r) {
+        return r.station === station && r.station !== 'Drinks' && r.station !== '' && (!r.hall || !hallName || r.hall === hallName);
+      });
+    }
+    // Draws the chips for ONE station (or nothing, when no station is picked).
+    function showDineRecents(station) {
+      const el = document.getElementById('dineRecents');
+      if (!el) return;
+      const mine = station ? dineRecentsAt(station) : [];
+      if (!mine.length) { el.innerHTML = ''; return; }
+      el.innerHTML = '<div class="sub" style="margin-bottom:6px">Had here before — tap to log it again, no waiting</div>' + dineChipsHtml(mine);
+    }
+    // When the menu cannot be loaded (no signal, feed down) the station list never appears, and
+    // the chips — the whole point of which is logging with no network — would be unreachable.
+    // So a failed load draws this hall's chips grouped by station instead (11 Sep sweep).
+    function showDineRecentsFallback() {
+      const el = document.getElementById('dineRecents');
+      if (!el) return;
+      const byStation = {};
+      dineRecents.forEach(function (r) {
+        if (r.station === 'Drinks' || r.station === '') return;
+        if (!dineRecentsAt(r.station).length) return;
+        byStation[r.station] = byStation[r.station] || dineRecentsAt(r.station);
+      });
+      const names = Object.keys(byStation);
+      if (!names.length) { el.innerHTML = ''; return; }
+      el.innerHTML = '<div class="sub" style="margin-bottom:6px">The menu would not load — but these you have had here before, no lookup needed</div>' +
+        names.map(function (n) { return '<div class="sub" style="padding:0 0 4px">' + esc(n) + '</div>' + dineChipsHtml(byStation[n]); }).join('');
     }
 
     document.getElementById('dineRecents').addEventListener('click', function (ev) {
@@ -1653,217 +2088,496 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       const r = dineRecents[Number(b.dataset.i)];
       if (!r) return;
       lastPhotoTaken = null;
-      showFood({ name: r.name, kcal: r.kcal, protein: r.protein, fat: r.fat, carbs: r.carbs, dining: true }, 'dining hall, from before');
+      showFood({ name: r.name, kcal: r.kcal, protein: r.protein, fat: r.fat, carbs: r.carbs, dining: true,
+                 hall: r.hall, station: r.station }, 'dining hall, from before');
     });
 
-    // Draw them once at startup. The script sits at the end of <body>, so #dineRecents exists.
-    showDineRecents();
-
-    async function dineProxySteps(steps) {
-      const r = await safeFetch('/.netlify/functions/dining-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ steps: steps })
-      });
+    // One call to the pass-through function. `query` is already URL-encoded by the caller.
+    async function dineApi(query) {
+      const r = await safeFetch('/.netlify/functions/dining-menu?' + query);
       if (!r) throw new Error('offline');
       const outer = await r.json();
       if (!outer.ok) throw new Error(outer.error || 'bad response');
-      return outer.text;
+      return outer.data;
     }
 
-    function dinePanelHtml(panelsJsonText, id) {
-      const nn = JSON.parse(panelsJsonText);
-      const p = (nn.panels || []).find(function (x) { return x.id === id; });
-      return p ? p.html : '';
+    // --- Meals -------------------------------------------------------------------------------
+    // Which meals the loaded day actually has, in a sensible order (see DINE_MEAL_ORDER).
+    function dineMealsIn(rows) {
+      const seen = {};
+      rows.forEach(function (r) { if (r.meal) seen[r.meal] = true; });
+      return Object.keys(seen).sort(function (a, b) {
+        const ia = DINE_MEAL_ORDER.indexOf(a), ib = DINE_MEAL_ORDER.indexOf(b);
+        if (ia !== -1 && ib !== -1) return ia - ib;
+        if (ia !== -1) return -1;
+        if (ib !== -1) return 1;
+        return a < b ? -1 : a > b ? 1 : 0;
+      });
+    }
+    // Lands the wanted meal on one the hall really runs. Exact name first; failing that, the
+    // first meal that contains the word ("Breakfast" -> "Continental Breakfast" on a weekend,
+    // "Lunch" -> "Light Lunch" after 1:30 at Ike). Word-bounded so "Brunch" is never "Lunch".
+    // Nothing fits -> null, and the buttons show what there is instead of guessing.
+    function dineResolveMeal(meals, want) {
+      if (!want) return null;
+      if (meals.indexOf(want) !== -1) return want;
+      const re = new RegExp('\\b' + want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+      for (let i = 0; i < meals.length; i++) if (re.test(meals[i])) return meals[i];
+      // A store or café has no Breakfast/Lunch/Dinner — its whole list is "Daily Menu". Land there
+      // rather than asking him to pick a meal that does not exist. Same for a place with one meal.
+      if (meals.indexOf('Daily Menu') !== -1) return 'Daily Menu';
+      if (meals.length === 1) return meals[0];
+      return null;
+    }
+    function dineChosenMeal() {
+      const on = dineMealRow.querySelector('button.on');
+      return on ? on.dataset.meal : null;
+    }
+    const dineWalk = document.getElementById('dineWalk');
+    const dineSummary = document.getElementById('dineSummary');
+    function dineCollapseWalk() {
+      const meal = dineChosenMeal();
+      if (!meal || !dineHall.value || !dineStation.value) return;
+      dineSummary.innerHTML = '<b>' + esc(meal) + '</b> · ' + esc(dineDayWord()) + ' · ' +
+        esc(dineHall.options[dineHall.selectedIndex].textContent) + ' · ' + esc(dineStation.value) +
+        ' <span style="color:var(--accent)">— change</span>';
+      dineSummary.style.display = 'block';
+      dineWalk.style.display = 'none';
+    }
+    function dineExpandWalk() {
+      dineSummary.style.display = 'none';
+      dineWalk.style.display = 'block';
+    }
+    dineSummary.addEventListener('click', dineExpandWalk);
+    // Draws the meal buttons. With no data loaded it is the plain three; with a day loaded it is
+    // that day's real meals, the resolved choice lit.
+    function dineRenderMeals(meals, lit) {
+      dineMealRow.innerHTML = meals.map(function (m) {
+        return '<button type="button" class="dmeal' + (m === lit ? ' on' : '') + '" data-meal="' + esc(m) + '">' + esc(m) + '</button>';
+      }).join('');
     }
 
-    // Generic "find every link that calls this JS function, pull its name and its numeric id out
-    // of the onclick attribute" — used for the hall->station step, which is a plain list.
-    function dineParseLinks(html, fnName) {
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const links = Array.from(doc.querySelectorAll('a[onclick*="' + fnName + '"]'));
-      return links.map(function (a) {
-        const m = (a.getAttribute('onclick') || '').match(new RegExp(fnName + '\\((\\d+)\\)'));
-        return { name: a.textContent.trim(), oid: m ? m[1] : null };
-      }).filter(function (x) { return x.oid; });
+    // --- Loading a hall's day -----------------------------------------------------------------
+    // The one real call. Runs whenever the hall or the day changes, or the card is re-opened.
+    // Everything downstream (meals, stations, items) is a filter over what this returns.
+    async function dineLoadDay() {
+      [dineStation, dineItem].forEach(function (s) { s.style.display = 'none'; s.innerHTML = ''; });
+      showDineRecents(null);
+      dineNote.textContent = '';
+      dineDayRows = null;
+      const hall = dineHall.value, day = dineDate.value;
+      // Drinks only make sense once he has said which hall he is in.
+      dineDrinkToggle.style.display = hall ? 'inline-block' : 'none';
+      if (!hall) { dineDrinkPanel.style.display = 'none'; dineDrinkToggle.textContent = 'Add a drink'; dineRenderMeals(['Breakfast', 'Lunch', 'Dinner'], dineWantMeal); return; }
+      if (!day) { dineNote.textContent = 'Pick a day first.'; return; }
+      const key = hall + '|' + day;
+      const hallName = dineHall.options[dineHall.selectedIndex].textContent;
+      try {
+        let entry = dineCacheGet('menus', key);
+        if (!entry) {
+          dineNote.textContent = 'Loading the menu...';
+          const raw = await dineApi('op=menu&hall=' + encodeURIComponent(hall) + '&date=' + encodeURIComponent(day));
+          entry = { at: Date.now(), rows: dineSlimRows(raw, hallName) };
+          // An empty day is a real answer (the hall is closed, or the menu is not posted yet)
+          // and is cached like any other so re-tapping does not hammer the feed.
+          dineCacheSet('menus', key, entry);
+        }
+        // Guard against a slower, older answer landing after he has already changed the hall.
+        if (dineHall.value !== hall || dineDate.value !== day) return;
+        dineDayRows = { hall: hall, day: day, rows: entry.rows };
+        dineApplyDay();
+      } catch (e) {
+        dineNote.textContent = DINE_ERR;
+        showDineRecentsFallback();
+      }
     }
 
-    // The station->menu step groups meals under date headers, so this walks each date's card and
-    // labels every meal link it finds with that date.
-    function dineParseMenus(html) {
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const out = [];
-      doc.querySelectorAll('section.card').forEach(function (sec) {
-        const header = sec.querySelector('header');
-        const date = header ? header.textContent.trim() : '';
-        sec.querySelectorAll('a.cbo_nn_menuLink').forEach(function (a) {
-          const m = (a.getAttribute('onclick') || '').match(/menuListSelectMenu\((\d+)\)/);
-          if (m) out.push({ label: date + ' — ' + a.textContent.trim(), oid: m[1] });
+    // Rebuilds the meal buttons from the loaded day and shows the stations for the chosen meal.
+    function dineApplyDay() {
+      const rows = dineDayRows ? dineDayRows.rows : [];
+      if (!rows.length) {
+        dineRenderMeals(['Breakfast', 'Lunch', 'Dinner'], dineWantMeal);
+        dineNote.textContent = 'No menu posted for that hall ' + dineOnDay() + ' — it may be closed, or the menu is not up yet.';
+        return;
+      }
+      const meals = dineMealsIn(rows);
+      const meal = dineResolveMeal(meals, dineWantMeal);
+      dineRenderMeals(meals, meal);
+      if (!meal) {
+        dineNote.textContent = 'No ' + (dineWantMeal || 'meal') + ' at this hall ' + dineOnDay() + ' — pick one of the meals it does have.';
+        return;
+      }
+      dineRenderStations(rows, meal);
+    }
+
+    // Stations that have at least one item at this meal, in the order the feed lists them.
+    function dineRenderStations(rows, meal) {
+      dineItem.style.display = 'none'; dineItem.innerHTML = '';
+      const stations = [];
+      rows.forEach(function (r) { if (r.meal === meal && stations.indexOf(r.su) === -1) stations.push(r.su); });
+      const keep = dineStation.value;
+      dineStation.innerHTML = '<option value="">Pick a station</option>' + stations.map(function (s) {
+        return '<option value="' + esc(s) + '">' + esc(s) + '</option>';
+      }).join('');
+      dineStation.style.display = 'block';
+      // Switching Lunch -> Dinner keeps the station if it serves both, which is the whole point
+      // of asking the meal separately: grill at lunch, grill at dinner, no re-picking.
+      if (keep && stations.indexOf(keep) !== -1) {
+        dineStation.value = keep;
+        showDineRecents(keep);
+        dineRenderItems(rows, meal, keep);
+      } else if (stations.length === 1) {
+        // One station (a café, a store, LAR most days): no point asking.
+        dineStation.value = stations[0];
+        showDineRecents(stations[0]);
+        dineRenderItems(rows, meal, stations[0]);
+      } else {
+        showDineRecents(null);
+        dineNote.textContent = meal + ', ' + dineDayWord() + ' — pick a station.';
+      }
+    }
+
+    // Items at one station for one meal, grouped by course the way the serving line is.
+    function dineRenderItems(rows, meal, station) {
+      const items = rows.filter(function (r) { return r.meal === meal && r.su === station; })
+        .sort(function (a, b) { return a.sort - b.sort || (a.course < b.course ? -1 : a.course > b.course ? 1 : 0) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0); });
+      // The same recipe can be listed twice at a station (once per course); one entry is enough.
+      const seen = {};
+      let lastCat = null, html = '<option value="">Pick an item</option>';
+      items.forEach(function (it) {
+        if (seen[it.id]) return;
+        seen[it.id] = true;
+        if (it.course !== lastCat) {
+          if (lastCat !== null) html += '</optgroup>';
+          html += '<optgroup label="' + esc(it.course) + '">';
+          lastCat = it.course;
+        }
+        html += '<option value="' + esc(it.id) + '">' + esc(it.name) + '</option>';
+      });
+      if (lastCat !== null) html += '</optgroup>';
+      dineItem.innerHTML = html;
+      dineItem.style.display = 'block';
+      dineNote.textContent = meal + ', ' + dineDayWord() + ' — pick your item.';
+    }
+
+    // "today" / "tomorrow" / "on 2026-09-14" — the same word with the preposition it needs.
+    function dineOnDay() {
+      const w = dineDayWord();
+      return (w === 'today' || w === 'tomorrow') ? w : 'on ' + w;
+    }
+    // "today" / "tomorrow" / the date itself, for the status line.
+    function dineDayWord() {
+      if (!dineDate.value) return 'that day';
+      if (dineDate.value === todayKey()) return 'today';
+      const t = new Date(); t.setDate(t.getDate() + 1);
+      const tk = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+      if (dineDate.value === tk) return 'tomorrow';
+      return dineDate.value;
+    }
+
+    // --- The controls --------------------------------------------------------------------------
+    dineHall.addEventListener('change', function () {
+      try { if (dineHall.value) localStorage.setItem('dineLastHall', dineHall.value); else localStorage.removeItem('dineLastHall'); } catch (e) { /* best effort */ }
+      dineLoadDay();
+    });
+    dineDate.addEventListener('change', function () {
+      dineDayLabel.textContent = dineDate.value === todayKey() ? 'Which day? (today)' : 'Which day?';
+      dineLoadDay();
+    });
+    // Tapping a meal is free: the day is already loaded, so this is a filter, not a call.
+    dineMealRow.addEventListener('click', function (ev) {
+      const b = ev.target.closest ? ev.target.closest('.dmeal') : null;
+      if (!b) return;
+      dineMealRow.querySelectorAll('.dmeal').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      dineWantMeal = b.dataset.meal;
+      if (dineDayRows) dineApplyDay();
+    });
+    dineStation.addEventListener('change', function () {
+      dineItem.style.display = 'none'; dineItem.innerHTML = '';
+      showDineRecents(dineStation.value);
+      const meal = dineChosenMeal();
+      if (!dineStation.value || !dineDayRows || !meal) return;
+      dineRenderItems(dineDayRows.rows, meal, dineStation.value);
+    });
+    // --- Drinks at the dining hall -------------------------------------------------------
+    //
+    // Fountain drinks are not on Illinois's nutrition site the way food is, and they do not
+    // need to be: a fountain drink is sold by VOLUME. One published figure per drink, times
+    // however many ounces your cup holds, is the entire calculation. So the numbers below are
+    // stored per 12 fl oz - the size every drinks company publishes against, which keeps them
+    // readable and checkable against the can in your hand - and scaled at the end.
+    //
+    // WHERE THESE COME FROM, stated plainly because it matters: they are the DRINK MAKERS'
+    // published figures, not Illinois's. Illinois does not publish beverage-bar nutrition.
+    // For a sealed product like Coca-Cola that is the same number either way. For the sweet
+    // tea and the lemonade, which the hall mixes itself, it is a good estimate and no more.
+    //
+    // `ice: true` means it comes out of a fountain over ice, which is most of this list.
+    const DRINK_GROUPS = [
+      { group: 'Fountain', drinks: [
+        // name,                            kcal  pro  fat  carb   per 12 fl oz
+        ['Coca-Cola',                        140,   0,   0,  39],
+        ['Diet Coke',                          0,   0,   0,   0],
+        ['Coca-Cola Zero Sugar',                0,   0,   0,   0],
+        ['Sprite',                            140,   0,   0,  38],
+        ['Sprite Zero Sugar',                   0,   0,   0,   0],
+        ['Dr Pepper',                         150,   0,   0,  40],
+        ['Fanta Orange',                      160,   0,   0,  44],
+        ["Barq's Root Beer",                  160,   0,   0,  45],
+        ['Mello Yello',                       170,   0,   0,  47],
+        ["Seagram's Ginger Ale",              130,   0,   0,  34],
+        ['Minute Maid Lemonade',              150,   0,   0,  40],
+        ['Hi-C Fruit Punch',                  140,   0,   0,  38],
+        ['Powerade Mountain Berry Blast',      80,   0,   0,  21]
+      ], ice: true },
+      { group: 'Beverage bar', drinks: [
+        ['Water',                               0,   0,   0,   0],
+        ['Unsweetened iced tea',                0,   0,   0,   0],
+        ['Sweet tea',                          90,   0,   0,  24],
+        ['Lemonade',                          150,   0,   0,  40],
+        ['Coffee, black',                       0,   0,   0,   0]
+      ], ice: true },
+      // Milk and juice are published per 8 fl oz; these are those figures scaled to 12 so the
+      // whole table shares one basis. They are poured from a dispenser, not over ice, so the
+      // ice allowance below does not apply to them.
+      { group: 'Milk', drinks: [
+        ['Skim milk',                         120,  12,   0,  18],
+        ['1% milk',                           150,  12, 3.8,  18],
+        ['2% milk',                           180,  12, 7.5,  18],
+        ['Whole milk',                        225,  12,  12,  18],
+        ['Chocolate milk (1%)',               240,  12, 3.8,  39]
+      ], ice: false },
+      { group: 'Juice', drinks: [
+        ['Orange juice',                      165,   3,   0,  39],
+        ['Apple juice',                       165,   0,   0,  42],
+        ['Cranberry juice cocktail',          165,   0,   0,  42]
+      ], ice: false }
+    ];
+
+    // How much of a cup is actually drink once it has been filled with ice. Ice displaces
+    // roughly a third of the volume in a normal fill - so a "16 oz cup" of Coke is about 11 oz
+    // of Coke. Counting the full 16 would overstate every fountain drink by about 40%, which
+    // over a semester is a real number. This is an ESTIMATE, and the app shows the ounces it
+    // worked out so the guess is visible rather than buried.
+    const ICE_FILL = 0.7;
+
+    // Owen's cup. NOT published anywhere - University Housing does not list it and neither does
+    // EatSmart - so it is a setting rather than a constant, and 16 is a starting point, not a
+    // measurement. The size is normally molded into the base of the tumbler.
+    const DEFAULT_CUP_OZ = 16;
+
+    function dineCupOunces() {
+      const v = Number(dineCupOz.value);
+      // max="64" on the box is only a hint; 160 (a fat-fingered 16) multiplied every drink by ten.
+      return v > 0 ? Math.min(64, v) : DEFAULT_CUP_OZ;
+    }
+
+    // "16 because nobody has ever looked" and "16 because Owen checked the bottom of a cup" are
+    // the same number in the box and completely different facts. This keeps them apart, so the
+    // screen can stop calling it a guess the moment it stops being one -- otherwise the warning
+    // either nags forever or disappears without anything having been verified.
+    function cupIsChecked() {
+      return localStorage.getItem('dineCupChecked') === '1';
+    }
+    function showCupLabel() {
+      cupLabel.textContent = cupIsChecked() ? 'Cup size' : 'Cup size (not checked yet \u2014 16 is a guess)';
+    }
+    // The ounces of actual liquid a cup holds for this drink.
+    function drinkPourOz(iceApplies) {
+      return dineCupOunces() * (iceApplies && dineIce.checked ? ICE_FILL : 1);
+    }
+
+    function showDrinkFill() {
+      const cup = dineCupOunces();
+      dineFillNote.textContent = dineIce.checked
+        ? cup + ' oz cup, filled with ice first — about ' + Math.round(cup * ICE_FILL) +
+          ' oz of drink. Milk and juice are counted as the full ' + cup + ' oz.'
+        : cup + ' oz cup, counted as ' + cup + ' oz of drink.';
+      document.getElementById('cupSummary').innerHTML = cup + ' oz cup' +
+        (dineIce.checked ? ', with ice (about ' + Math.round(cup * ICE_FILL) + ' oz of drink)' : ', no ice') +
+        (cupIsChecked() ? '' : ' · size not checked yet') +
+        ' <span style="color:var(--accent)">— change</span>';
+    }
+    document.getElementById('cupSummary').addEventListener('click', function () {
+      const st = document.getElementById('cupSettings');
+      st.style.display = st.style.display === 'none' ? 'block' : 'none';
+    });
+
+    function showDrinks() {
+      let html = '';
+      DRINK_GROUPS.forEach(function (g, gi) {
+        html += '<div class="mealhead"><span>' + g.group + '</span></div>';
+        g.drinks.forEach(function (d, di) {
+          const oz = drinkPourOz(g.ice);
+          const kcal = Math.round(d[1] / 12 * oz);
+          html += '<button type="button" class="drinkBtn" data-g="' + gi + '" data-d="' + di + '">' +
+            '<span>' + esc(d[0]) + '</span><span>' + kcal + ' kcal</span></button>';
         });
       });
-      return out;
+      drinkList.innerHTML = html;
+      showDrinkFill();
     }
 
-    // The menu->item step groups items under category rows (Appetizers & Sides, Breads, etc).
-    // Category rows and item rows are both plain <tr>s in one long list, so this walks them in
-    // order and remembers whichever category heading it passed most recently.
-    function dineParseItems(html) {
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const out = [];
-      let category = '';
-      doc.querySelectorAll('tr').forEach(function (tr) {
-        if (tr.classList.contains('cbo_nn_itemGroupRow')) {
-          const div = tr.querySelector('div[role="button"]');
-          category = div ? div.textContent.trim() : '';
-          return;
-        }
-        if (!tr.classList.contains('cbo_nn_itemPrimaryRow')) return;
-        const a = tr.querySelector('a.cbo_nn_itemHover');
-        if (!a) return;
-        const m = (a.getAttribute('onclick') || '').match(/getItemNutritionLabelOnClick\(event,(\d+)\)/);
-        if (!m) return;
-        // The item's name is the link's own first text node — the little allergen icons after it
-        // are separate <span> children, so reading just childNodes[0] leaves those out.
-        const nameNode = a.childNodes[0];
-        out.push({ category: category, name: nameNode ? nameNode.textContent.trim() : a.textContent.trim(), oid: m[1] });
-      });
-      return out;
-    }
-
-    // Pulls the numbers off the actual nutrition label. Reads from the whole label's text rather
-    // than fussing over exact markup, since "Calories from Fat" always has a word right after
-    // "Calories" while the real Calories line has a number — same trick for the other three.
-    function dineParseNutrition(html) {
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const text = doc.body.textContent || '';
-      const headerEl = doc.querySelector('.cbo_nn_LabelHeader');
-      const servingEl = doc.querySelector('.cbo_nn_LabelBottomBorderLabel');
-      const kcalMatch = text.match(/Calories\s+(\d[\d,]*)/);
-      const fatMatch = text.match(/Total Fat\s+([\d.]+)\s*g/i);
-      const carbMatch = text.match(/Total Carbohydrate\s+([\d.]+)\s*g/i);
-      const proteinMatch = text.match(/Protein\s+([\d.]+)\s*g/i);
+    // Turns one row of the table into a food the rest of the app already knows how to handle,
+    // so refills are just the quantity stepper that is already on screen and the drink lands in
+    // the tap-to-repeat list like any other dining item.
+    function drinkAsFood(gi, di) {
+      const g = DRINK_GROUPS[gi];
+      const d = g.drinks[di];
+      const oz = drinkPourOz(g.ice);
+      const k = oz / 12;
       return {
-        name: headerEl ? headerEl.textContent.trim() : 'Dining hall item',
-        servingSize: servingEl ? servingEl.textContent.replace(/^Serving Size:\s*/, '').trim() : '',
-        kcal: kcalMatch ? Number(kcalMatch[1].replace(/,/g, '')) : 0,
-        fat: fatMatch ? Number(fatMatch[1]) : 0,
-        carbs: carbMatch ? Number(carbMatch[1]) : 0,
-        protein: proteinMatch ? Number(proteinMatch[1]) : 0
+        name: d[0] + ' (' + Math.round(oz) + ' oz)',
+        kcal: Math.round(d[1] * k),
+        protein: Math.round(d[2] * k * 10) / 10,
+        fat: Math.round(d[3] * k * 10) / 10,
+        carbs: Math.round(d[4] * k * 10) / 10,
+        dining: true,
+        // Drinks are one tap in their own panel, so they never need a chip; a named bucket keeps
+        // them out of the unnamed one that old, pre-station entries land in.
+        station: 'Drinks'
       };
     }
 
-    dineHall.addEventListener('change', async function () {
-      [dineStation, dineMeal, dineItem].forEach(function (s) { s.style.display = 'none'; s.innerHTML = ''; });
-      dineNote.textContent = '';
-      if (!dineHall.value) { dinePath = []; return; }
-      dinePath = [{ path: 'Unit/SelectUnitFromUnitsList', params: { unitOid: dineHall.value } }];
-      try {
-        // Cache hit: no call, no browser launch, no wait. Which stations a hall has does not
-        // change during the day.
-        let stations = dineCacheGet('stations', dineHall.value);
-        if (!stations) {
-          dineNote.textContent = 'Loading stations... (this checks a real background browser, give it a few seconds)';
-          const text = await dineProxySteps(dinePath);
-          stations = dineParseLinks(dinePanelHtml(text, 'childUnitsPanel'), 'childUnitsSelectUnit');
-          if (stations.length) dineCacheSet('stations', dineHall.value, stations);
-        }
-        if (!stations.length) { dineNote.textContent = 'No stations found — try again or type the numbers in yourself.'; return; }
-        dineStation.innerHTML = '<option value="">Pick a station</option>' + stations.map(function (s) {
-          return '<option value="' + s.oid + '">' + s.name.replace(/</g, '&lt;') + '</option>';
-        }).join('');
-        dineStation.style.display = 'block';
-        dineNote.textContent = '';
-      } catch (e) {
-        dineNote.textContent = DINE_ERR;
-      }
+    dineDrinkToggle.addEventListener('click', function () {
+      const open = dineDrinkPanel.style.display !== 'none';
+      dineDrinkPanel.style.display = open ? 'none' : 'block';
+      dineDrinkToggle.textContent = open ? 'Add a drink' : 'Hide drinks';
+      if (!open) showDrinks();
     });
 
-    dineStation.addEventListener('change', async function () {
-      [dineMeal, dineItem].forEach(function (s) { s.style.display = 'none'; s.innerHTML = ''; });
-      dineNote.textContent = '';
-      if (!dineStation.value) return;
-      dinePath = dinePath.slice(0, 1).concat([{ path: 'Unit/SelectUnitFromChildUnitsList', params: { unitOid: dineStation.value } }]);
+    dineCupOz.addEventListener('input', function () {
       try {
-        let menus = dineCacheGet('menus', dineStation.value);
-        if (!menus) {
-          dineNote.textContent = 'Loading dates...';
-          const text = await dineProxySteps(dinePath);
-          menus = dineParseMenus(dinePanelHtml(text, 'menuPanel'));
-          if (menus.length) dineCacheSet('menus', dineStation.value, menus);
-        }
-        if (!menus.length) { dineNote.textContent = 'No menu found for this station right now.'; return; }
-        dineMeal.innerHTML = '<option value="">Pick a date and meal</option>' + menus.map(function (m) {
-          return '<option value="' + m.oid + '">' + m.label.replace(/</g, '&lt;') + '</option>';
-        }).join('');
-        dineMeal.style.display = 'block';
-        dineNote.textContent = '';
-      } catch (e) {
-        dineNote.textContent = DINE_ERR;
-      }
+        localStorage.setItem('dineCupOz', String(dineCupOunces()));
+        // Typing in the box at all means somebody has actually looked at a cup. Typing 16 counts:
+        // confirming the guess is as real an answer as correcting it.
+        if (dineCupOz.value !== '' && Number(dineCupOz.value) <= 64) localStorage.setItem('dineCupChecked', '1');
+        if (Number(dineCupOz.value) > 64) statusEl.textContent = 'No cup holds ' + dineCupOz.value + ' oz — using 64. Check the number.';
+      } catch (e) { /* best effort */ }
+      showCupLabel();
+      showDrinks();
+    });
+    dineIce.addEventListener('change', function () {
+      try { localStorage.setItem('dineIce', dineIce.checked ? '1' : '0'); } catch (e) { /* best effort */ }
+      showDrinks();
     });
 
-    dineMeal.addEventListener('change', async function () {
-      dineItem.style.display = 'none';
-      dineItem.innerHTML = '';
-      dineNote.textContent = '';
-      if (!dineMeal.value) return;
-      dinePath = dinePath.slice(0, 2).concat([{ path: 'Menu/SelectMenu', params: { menuOid: dineMeal.value } }]);
-      try {
-        // This is the big one for picking several things off one dinner: the item list is
-        // fetched once and then reused, instead of being re-walked for every item.
-        let items = dineCacheGet('items', dineMeal.value);
-        if (!items) {
-          dineNote.textContent = 'Loading items...';
-          const text = await dineProxySteps(dinePath);
-          items = dineParseItems(dinePanelHtml(text, 'itemPanel'));
-          if (items.length) dineCacheSet('items', dineMeal.value, items);
-        }
-        if (!items.length) { dineNote.textContent = 'No items found for that meal.'; return; }
-        let lastCat = null, html = '<option value="">Pick an item</option>';
-        items.forEach(function (it) {
-          if (it.category !== lastCat) {
-            if (lastCat !== null) html += '</optgroup>';
-            html += '<optgroup label="' + it.category.replace(/</g, '&lt;') + '">';
-            lastCat = it.category;
-          }
-          html += '<option value="' + it.oid + '">' + it.name.replace(/</g, '&lt;') + '</option>';
-        });
-        if (lastCat !== null) html += '</optgroup>';
-        dineItem.innerHTML = html;
-        dineItem.style.display = 'block';
-        dineNote.textContent = '';
-      } catch (e) {
-        dineNote.textContent = DINE_ERR;
-      }
+    drinkList.addEventListener('click', function (ev) {
+      const b = ev.target.closest ? ev.target.closest('.drinkBtn') : null;
+      if (!b) return;
+      editor.style.display = 'none';
+      portion.style.display = 'none';
+      lastPhotoTaken = null;   // nothing photographed on this path
+      showFood(drinkAsFood(Number(b.dataset.g), Number(b.dataset.d)), 'drink');
     });
+
+    // Restore the cup and ice settings, then draw the note under them.
+    dineCupOz.value = String(Number(localStorage.getItem('dineCupOz')) || DEFAULT_CUP_OZ);
+    dineIce.checked = localStorage.getItem('dineIce') !== '0';
+    showCupLabel();
+    drinkSource.textContent = 'Calories are the drink makers\u2019 published figures scaled to your cup. ' +
+      'Illinois does not publish beverage-bar nutrition, so the sweet tea and lemonade are estimates. ' +
+      'Check the cup size on the base of the tumbler and correct it above.';
+    showDrinkFill();
+
+    // Which meal it is right now, so the common case is zero taps. Breakfast until 10:30,
+    // lunch until 4, dinner after that -- Illinois's halls run roughly those hours and the
+    // wrong guess costs one tap, not a wrong log.
+    function dineDefaultMeal() {
+      const h = new Date().getHours() + new Date().getMinutes() / 60;
+      if (h < 10.5) return 'Breakfast';
+      if (h < 16) return 'Lunch';
+      return 'Dinner';
+    }
+
+    // Puts the dining card back to "today, the meal it is now" without wiping a lookup he is
+    // part-way through -- called when the card is opened from the + menu.
+    function dineResetPicks() {
+      dineExpandWalk();
+      // The hall he used last time is preselected, so on an ordinary day the card is already
+      // on today, the current meal and his usual hall — the first tap is the station.
+      const lastHall = localStorage.getItem('dineLastHall');
+      if (lastHall && !dineHall.value) {
+        dineHall.value = lastHall;
+        // An id no option has (the halls were renumbered on 10 Sep) leaves the select blank.
+        if (!dineHall.value) { dineHall.selectedIndex = 0; try { localStorage.removeItem('dineLastHall'); } catch (e) { /* best effort */ } }
+      }
+      dineDate.value = todayKey();
+      dineDayLabel.textContent = 'Which day? (today)';
+      dineWantMeal = dineDefaultMeal();
+      // Back to the plain three; a loaded day rebuilds them from its real meals right after.
+      dineRenderMeals(['Breakfast', 'Lunch', 'Dinner'], dineWantMeal);
+    }
+    dineResetPicks();
+
+    // Reads the four numbers the app tracks off Housing's label. Values arrive as strings like
+    // "21 g (7% Daily Value)" or "< 1 g"; the leading number is all that is wanted. Anything
+    // unreadable is 0, and a label with all four at 0 is treated as "no data" below.
+    function dineParseNutrition(n) {
+      const list = {};
+      ((n && n.NutritionList) || []).forEach(function (a) { if (a && a.Name) list[a.Name] = a.Value; });
+      function num(s) {
+        const m = /(\d+(?:\.\d+)?)/.exec(String(s == null ? '' : s).replace(/,/g, ''));
+        return m ? Number(m[1]) : 0;
+      }
+      return {
+        name: n && n.FormalName ? String(n.FormalName).trim() : 'Dining hall item',
+        servingSize: n && n.Serving ? String(n.Serving).trim() : '',
+        kcal: num(list.Calories),
+        fat: num(list.TotalFat),
+        carbs: num(list.TotalCarbs),
+        protein: num(list.Protein)
+      };
+    }
 
     dineItem.addEventListener('change', async function () {
       if (!dineItem.value) return;
-      dinePath = dinePath.slice(0, 3).concat([{ path: 'NutritionDetail/ShowItemNutritionLabel', params: { detailOid: dineItem.value } }]);
+      const itemId = dineItem.value;
+      const itemName = dineItem.options[dineItem.selectedIndex].textContent;
       try {
-        // The one call that genuinely cannot be avoided the first time -- each item's label is
-        // its own page. Cached per item for the day, so going back to something already looked
-        // up (or logging it twice) is instant.
-        let n = dineCacheGet('nutrition', dineItem.value);
+        // The only call after the hall's day — one small label per item, cached for the day so
+        // going back to something already looked up (or logging it twice) is instant.
+        let n = dineCacheGet('nutrition', itemId);
         if (!n) {
           dineNote.textContent = 'Loading nutrition...';
-          // This last step returns the label as plain HTML, not the {success, panels} JSON the
-          // other three use — NetNutrition's own JS just drops it straight into a div, so this
-          // reads it the same way instead of trying to JSON-parse it.
-          const html = await dineProxySteps(dinePath);
-          n = dineParseNutrition(html);
-          if (n.kcal || n.protein || n.fat || n.carbs) dineCacheSet('nutrition', dineItem.value, n);
+          n = dineParseNutrition(await dineApi('op=nutrition&item=' + encodeURIComponent(itemId)));
+          if (n.kcal || n.protein || n.fat || n.carbs) dineCacheSet('nutrition', itemId, n);
         }
+        if (dineItem.value !== itemId) return;   // he moved on while this was loading
         if (!n.kcal && !n.protein && !n.fat && !n.carbs) {
-          dineNote.textContent = 'Could not read the nutrition label for that item — type the numbers in yourself.';
+          // Real gap in Illinois's data, not a failure: about one item in ten (salad bars,
+          // build-your-own bowls, the odd plain item) has a menu entry and no recipe behind it.
+          // Offer the AI-estimate path with the name already filled in rather than dead-ending.
+          // The stores and cafés list packaged goods (a 20 oz Coke, a King Size Kit Kat) with no
+          // label, and those ARE in the food database — so that route is offered first there.
+          dineNote.innerHTML = 'Illinois has no nutrition posted for ' + esc(itemName) + '. ' +
+            '<div class="btnStack" style="margin-top:6px">' +
+            '<button type="button" id="dineSearchIt" class="grey">Search the food database for it</button>' +
+            '<button type="button" id="dineEstimate" class="grey">Estimate it with the AI</button></div>';
+          document.getElementById('dineSearchIt').addEventListener('click', function () {
+            document.querySelectorAll('.entryMethod').forEach(function (el) { el.style.display = 'none'; });
+            foodSearch.value = itemName;
+            document.getElementById('searchCard').style.display = 'block';
+            foodSearchBtn.click();
+          });
+          document.getElementById('dineEstimate').addEventListener('click', function () {
+            document.querySelectorAll('.entryMethod').forEach(function (el) { el.style.display = 'none'; });
+            const desc = document.getElementById('desc');
+            desc.value = itemName + ' (' + dineHall.options[dineHall.selectedIndex].textContent + ')';
+            document.getElementById('descCard').style.display = 'block';
+            desc.focus();
+          });
           return;
         }
         lastPhotoTaken = null; // no camera photo on this path — saving it new will still ask for one
-        const stationName = dineStation.options[dineStation.selectedIndex].textContent;
+        const stationName = dineStation.value || dineHall.options[dineHall.selectedIndex].textContent;
         const f = {
           name: n.name + (n.servingSize ? ' (' + n.servingSize + ')' : '') + ' — ' + stationName,
           kcal: n.kcal, protein: n.protein, fat: n.fat, carbs: n.carbs,
-          dining: true   // so logFood() can add it to the tap-to-repeat list
+          dining: true,   // so logFood() can add it to the tap-to-repeat list
+          hall: dineHall.options[dineHall.selectedIndex].textContent,
+          station: stationName   // which station's "had here before" chips it belongs to
         };
         dineNote.textContent = '';
         showFood(f, 'dining hall');
@@ -1871,7 +2585,6 @@ if (data.error && /API key/i.test(data.error.message || '')) {
         dineNote.textContent = DINE_ERR;
       }
     });
-
     function macroCheck(f) {
       if (!f.kcal) return '';
       const fromMacros = f.protein * 4 + f.carbs * 4 + f.fat * 9;
@@ -1880,14 +2593,79 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       return ' ⚠ macros work out to ' + Math.round(fromMacros) + ' kcal, not ' + Math.round(f.kcal);
     }
 
+    // Backs all the way out of "I am about to log this" without logging anything. Everything
+    // it touches is screen state - nothing in the log or in saved meals is written or removed,
+    // so a misclick costs nothing.
+    function clearPending() {
+      pending = null;
+      qty = 1;
+      document.getElementById('pendingSummary').innerHTML = '';
+      setSuggestedMeal(null);
+      logBtns.style.display = 'none';
+      saveBtn.style.display = 'none';
+      portion.style.display = 'none';
+      editor.style.display = 'none';
+      editingMeal = null;
+      savingFromLog = false;
+      lastPhotoTaken = null;
+      setSavePhoto(null);
+      preview.removeAttribute('src');
+      preview.style.display = '';
+      hideManualFallback();
+    }
+
     function showFood(f, kind) {
       pending = f;
       qty = 1;
       syncQty();
       statusEl.textContent = f.name + ': ' + f.kcal + ' kcal, ' + f.protein + 'p ' + f.fat + 'f ' + f.carbs + 'c (' + kind + ')' + macroCheck(f);
+      showPendingSummary(kind);
       saveBtn.style.display = (kind === 'saved') ? 'none' : 'inline-block';
       logBtns.style.display = 'block';
+      // Dining food: the meal was picked in the dining card, so offer it as the one-tap answer.
+      // Hall meal names are mapped onto the four log meals by the word they contain ("Light
+      // Lunch" -> Lunch, "Continental Breakfast" -> Breakfast); anything else falls back to the
+      // four buttons.
+      const suggested = f.dining ? logMealFor(dineChosenMeal()) : null;
+      setSuggestedMeal(suggested);
+      // Fold the finished dining steps away so the buttons sit where the eye is (review, 2).
+      if (f.dining && kind === 'dining hall') dineCollapseWalk();
     }
+    function showPendingSummary(kind) {
+      const el = document.getElementById('pendingSummary');
+      if (!pending) { el.innerHTML = ''; return; }
+      const f = pending;
+      el.innerHTML = '<div><b>' + esc(f.name) + '</b></div>' +
+        '<div class="sub" style="padding:2px 0 0">' + Math.round(f.kcal * qty) + ' kcal · ' +
+        Math.round(f.protein * qty * 10) / 10 + 'p ' + Math.round(f.fat * qty * 10) / 10 + 'f ' + Math.round(f.carbs * qty * 10) / 10 + 'c' +
+        (qty !== 1 ? ' (×' + qty + ')' : '') + (kind ? ' · ' + esc(kind) : '') + '</div>';
+    }
+    function logMealFor(hallMeal) {
+      if (!hallMeal) return null;
+      for (const m of ['Breakfast', 'Lunch', 'Dinner']) {
+        if (new RegExp('\\b' + m + '\\b', 'i').test(hallMeal)) return m;
+      }
+      return null;
+    }
+    // One big "Log to Lunch" button, four-way choice behind "Different meal". Null = four buttons.
+    function setSuggestedMeal(meal) {
+      const big = document.getElementById('logSuggested'), other = document.getElementById('logOtherMeal'), four = document.getElementById('mealChoice');
+      big.dataset.meal = meal || '';
+      big.textContent = meal ? 'Log to ' + meal : '';
+      big.style.display = meal ? 'block' : 'none';
+      other.style.display = meal ? 'inline-block' : 'none';
+      four.style.display = meal ? 'none' : 'block';
+    }
+    document.getElementById('logSuggested').addEventListener('click', function () {
+      const m = [...document.querySelectorAll('#mealChoice .meal')].find(function (b) { return b.textContent === document.getElementById('logSuggested').dataset.meal; });
+      if (m) m.click();
+    });
+    document.getElementById('logOtherMeal').addEventListener('click', function () { setSuggestedMeal(null); });
+
+    cancelLog.addEventListener('click', function () {
+      clearPending();
+      statusEl.textContent = 'Cancelled — nothing was logged.';
+    });
 
     saveBtn.addEventListener('click', function () {
       if (!pending) return;
@@ -1903,7 +2681,7 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       fProtein.value = pending.protein;
       fFat.value = pending.fat;
       fCarbs.value = pending.carbs;
-      editor.style.display = 'block';
+      openEditor();
       warned = false;
       saveBtn.style.display = 'none';
       // If this food came from a photo you just took (an AI estimate or a barcode scan), reuse
@@ -1929,7 +2707,7 @@ if (data.error && /API key/i.test(data.error.message || '')) {
     statusEl.textContent = 'Fill in all four numbers before saving - none of them can be negative';
     return;
   }
-  if (editingMeal === null && !savePhoto) {
+  if (editingMeal === null && !savePhoto && !savingFromLog) {
     statusEl.textContent = 'Take a photo of the food before saving — that is how the app recognises it next time';
     return;
   }
@@ -1982,12 +2760,27 @@ if (data.error && /API key/i.test(data.error.message || '')) {
         showSaved();
         editor.style.display = 'none';
         setSavePhoto(null);
-        showFood(meal, 'saved');
-        statusEl.textContent = 'Saved ' + meal.name + ' — now pick a meal';
+        if (savingFromLog) {
+          // It came off a row that is ALREADY in the log. Offering the meal buttons again here
+          // logged it twice — and from History, logged a past day's food into today (11 Sep sweep).
+          savingFromLog = false;
+          statusEl.textContent = 'Saved ' + meal.name + ' to your meals';
+        } else {
+          showFood(meal, 'saved');
+          statusEl.textContent = 'Saved ' + meal.name + ' — now pick a meal';
+        }
       }
     });
 
     todayEl.addEventListener('click', function (ev) {
+      if (ev.target.classList.contains('savelog')) {
+        saveLoggedMeal(ev.target.dataset.day, Number(ev.target.dataset.i));
+        return;
+      }
+      if (ev.target.classList.contains('logname')) {
+        editLogEntry(ev.target.dataset.day, Number(ev.target.dataset.i));
+        return;
+      }
       if (!ev.target.classList.contains('del')) return;
       // Use the day this list was RENDERED for, not the day it is now. Leaving the app open in
       // the foreground across midnight (phone on a charger) left yesterday's rows on screen
@@ -2043,11 +2836,12 @@ if (ev.target.id === 'savedToggle') {
         fCarbs.value = m.carbs;
         saveBtn.style.display = 'none';
         logBtns.style.display = 'none';
-        editor.style.display = 'block';
+        openEditor();
         warned = false;
         // Keeps whatever photo the meal already has (older meals may have none — editing one
         // doesn't force you to add a photo just to fix a number, but you can retake it here).
         setSavePhoto(m.photo || null);
+        savingFromLog = false;
         statusEl.textContent = 'Editing ' + m.name;
       }
     });
@@ -2080,8 +2874,114 @@ savedEl.addEventListener('input', function (ev) {
       showToday();
       // Only remember it once it has ACTUALLY been logged, not merely looked up -- otherwise the
       // repeat list fills with things he browsed past and decided against.
-      if (f.dining) rememberDiningItem(f);
+      if (f.dining) rememberDiningItem(f.base || f);
       return true;
+    }
+
+    // Takes a meal that is ALREADY in the food log and puts it in Saved meals - the thing you
+    // want when you logged something, forgot to hit "Save these numbers", and only realised
+    // later. Reachable from any row in Today and from any day opened in History.
+    //
+    // It deliberately routes through the same editor as every other save rather than writing
+    // to `meals` directly, so the name check, the negative-number check and the
+    // macros-do-not-add-up warning all still run. The only thing it relaxes is the photo
+    // requirement, because the log keeps numbers and not pictures.
+    function saveLoggedMeal(dayKey, i) {
+      const e = (log[dayKey] || [])[i];
+      if (!e) {
+        statusEl.textContent = 'That entry is not there any more — close the day and open it again.';
+        return;
+      }
+      const already = meals.filter(function (m) {
+        return String(m.name).toLowerCase() === String(e.name).toLowerCase();
+      })[0];
+      if (already) {
+        statusEl.textContent = e.name + ' is already in your saved meals.';
+        return;
+      }
+      // The editor only exists on the Today tab, so come back to it if this was tapped in
+      // History - otherwise the editor opens on a screen that is not being shown.
+      const todayTab = document.querySelector('.tab[data-view="todayView"]');
+      if (todayTab && !todayTab.classList.contains('active')) todayTab.click();
+      pending = null;
+      editingMeal = null;
+      lastPhotoTaken = null;
+      fName.value = e.name;
+      fKcal.value = Math.round(e.kcal);
+      fProtein.value = Math.round(e.protein);
+      fFat.value = Math.round(e.fat);
+      fCarbs.value = Math.round(e.carbs);
+      setSavePhoto(null);
+      openEditor(true);
+      saveBtn.style.display = 'none';
+      logBtns.style.display = 'none';
+      portion.style.display = 'none';
+      warned = false;
+      hideManualFallback();
+      statusEl.textContent = 'Saving ' + e.name + ' to your meals — check the numbers, then tap Save meal.';
+      editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // --- Fixing a logged entry in place (Owen, 11 Sep) -------------------------------------
+    // Tapping an entry's name in Today or in an opened History day opens this. It edits the
+    // entry where it sits — same day, same meal, same photo — so a misread label or a typo
+    // never means delete-and-relog. Anything that is not a number is refused rather than
+    // logged as 0, and the change can be undone from the toast like a delete can.
+    function editLogEntry(day, i) {
+      const e = log[day] && log[day][i];
+      if (!e) return;
+      const before = Object.assign({}, e);
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px';
+      function field(id, label, value, step) {
+        // Each field is its own block so the four numbers sit side by side inside .nums (a flex
+        // row) without their labels becoming separate flex items.
+        return '<div style="flex:1;min-width:0"><label class="sub" style="display:block;margin-top:6px;padding:0">' + label + '</label>' +
+          '<input id="' + id + '" type="' + (step ? 'number' : 'text') + '"' + (step ? ' inputmode="decimal" min="0" step="' + step + '"' : '') +
+          ' value="' + esc(value) + '" style="font-size:16px;padding:9px;border:1px solid var(--border);border-radius:8px;width:100%;background:var(--card);color:var(--text);box-sizing:border-box"></div>';
+      }
+      overlay.innerHTML = '<div class="card" style="max-width:340px;width:100%;max-height:90vh;overflow:auto">' +
+        '<b>Fix this entry</b><div class="sub" style="margin:4px 0 6px">' + esc(day === todayKey() ? 'Today' : day) + ' · ' + esc(e.meal || 'Snack') + '</div>' +
+        field('elName', 'Name', e.name, null) +
+        '<div class="nums">' + field('elKcal', 'kcal', e.kcal, 'any') + field('elProtein', 'protein g', e.protein, 'any') +
+        field('elFat', 'fat g', e.fat, 'any') + field('elCarbs', 'carbs g', e.carbs, 'any') + '</div>' +
+        '<div class="sub" id="elNote" style="margin-top:6px"></div>' +
+        '<div class="btnStack" style="margin-top:10px"><button id="elSave">Save changes</button><button id="elCancel" class="grey">Cancel</button></div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      const q = function (id) { return overlay.querySelector('#' + id); };
+      function close() { document.body.removeChild(overlay); }
+      q('elCancel').addEventListener('click', close);
+      q('elSave').addEventListener('click', function () {
+        const name = q('elName').value.trim();
+        // A number box hands back '' for anything it could not read (letters typed in, or a
+        // cleared field), and Number('') is 0 — which would quietly log a 0. So a blank or
+        // unreadable box is refused outright; a real 0 has to be typed as 0.
+        const boxes = ['elKcal', 'elProtein', 'elFat', 'elCarbs'].map(function (id) { return q(id); });
+        const nums = boxes.map(function (b) { return b.value.trim() === '' || b.validity.badInput ? NaN : Number(b.value); });
+        if (!name) { q('elNote').textContent = 'The name cannot be empty.'; return; }
+        if (nums.some(function (n) { return !isFinite(n) || n < 0; })) { q('elNote').textContent = 'All four numbers are needed, zero or more — type 0 for none.'; return; }
+        // The entry may have been deleted or the day re-rendered while the box was open.
+        const cur = log[day] && log[day][i];
+        if (!cur || cur.name !== before.name) { close(); showToday(); showHistory(); return; }
+        cur.name = name; cur.kcal = nums[0]; cur.protein = nums[1]; cur.fat = nums[2]; cur.carbs = nums[3];
+        if (!store('log', log)) {
+          // Refused write (storage full): put the entry back so screen and disk agree and a retry
+          // is not tripped by the "changed under me" guard above. store() has already said why.
+          cur.name = before.name; cur.kcal = before.kcal; cur.protein = before.protein; cur.fat = before.fat; cur.carbs = before.carbs;
+          return;
+        }
+        close();
+        showToday(); showHistory();
+        showUndo('Changed ' + name, function () {
+          const again = log[day] && log[day][i];
+          if (!again) return;
+          again.name = before.name; again.kcal = before.kcal; again.protein = before.protein; again.fat = before.fat; again.carbs = before.carbs;
+          store('log', log);
+          showToday(); showHistory();
+        });
+      });
+      q('elName').focus();
     }
 
     function showToday() {
@@ -2093,8 +2993,9 @@ savedEl.addEventListener('input', function (ev) {
         let rows = '';
         entries.forEach(function (e, i) {
           if ((e.meal || 'Snack') !== m) return;
-          rows += '<div class="row"><span>' + esc(e.name) + '</span><span>' + Math.round(e.kcal) +
-            ' kcal <button class="del" data-i="' + i + '" aria-label="Delete">' + ICON_TRASH + '</button></span></div>';
+          rows += '<div class="row"><span class="logname" data-day="' + todayKey() + '" data-i="' + i + '" title="Tap to fix the name or numbers">' + esc(e.name) + '</span><span>' + Math.round(e.kcal) +
+            ' kcal <button class="savelog" data-day="' + todayKey() + '" data-i="' + i + '" aria-label="Save to my meals" title="Save to my meals">' + ICON_BOOKMARK + '</button>' +
+            '<button class="del" data-i="' + i + '" aria-label="Delete">' + ICON_TRASH + '</button></span></div>';
         });
         if (!rows) return;
         list += '<div class="mealhead">' + (MEAL_ICONS[m] || '') + '<span>' + m + '</span></div>' + rows;
@@ -2128,6 +3029,8 @@ savedEl.addEventListener('input', function (ev) {
         saveBtn.style.display = 'none';
         pending = null;
         qty = 1;
+        document.getElementById('pendingSummary').innerHTML = '';
+        setSuggestedMeal(null);
       });
     });
 
@@ -2145,7 +3048,12 @@ savedEl.addEventListener('input', function (ev) {
         // it he paid for the full four-launch lookup again. `photo` goes for the same reason:
         // two of something is still a picture of the same food.
         dining: f.dining,
-        photo: f.photo
+        photo: f.photo,
+        hall: f.hall,
+        station: f.station,
+        // The unscaled food, so the "had here before" chip remembers ONE serving. Remembering the
+        // scaled one gave a chip labelled like a single slice that logged two (11 Sep sweep).
+        base: f.base || f
       };
     }
 
@@ -2163,6 +3071,7 @@ savedEl.addEventListener('input', function (ev) {
     function announceQty() {
       if (pending) {
         statusEl.textContent = pending.name + ' × ' + qty + ' = ' + Math.round(pending.kcal * qty) + ' kcal';
+        showPendingSummary('');
       }
     }
 
@@ -2261,7 +3170,8 @@ savedEl.addEventListener('input', function (ev) {
       };
     }
 
-    async function askGeminiSearch(foodDesc, restaurant) {
+    async function askGeminiSearch(foodDesc, restaurant, attempt) {
+      attempt = attempt || 0;
       const key = await ensureApiKey();
       if (!key) return null;
       const instructions = 'Search the web for the exact published nutrition information for this restaurant menu item: "' + foodDesc + '" at ' + restaurant + '. Prefer the restaurant\'s own nutrition page or calculator if you can find one. Reply with ONLY a JSON object and no other text, no markdown formatting, in exactly this shape: {"name": "short name including the restaurant", "kcal": number, "protein": number, "fat": number, "carbs": number}. If you cannot find an exact match, use the closest published item you can find and say so in the name.';
@@ -2277,7 +3187,19 @@ savedEl.addEventListener('input', function (ev) {
         })
       });
       if (!r) return null;
-      const data = await r.json();
+      // Same busy-server treatment as callGemini - this path hits exactly the same Google
+      // servers, so it hit exactly the same 503 and had no retry at all. The .json() is
+      // wrapped for the same reason: an overloaded front end can answer with HTML.
+      let data;
+      try {
+        data = await r.json();
+      } catch (e) {
+        data = { error: { code: r.status, message: r.statusText || 'unreadable reply from Google' } };
+      }
+      if (data.error && isBusyCode(data.error.code) && attempt < AI_RETRY_DELAYS.length) {
+        await waitWithCountdown(AI_RETRY_DELAYS[attempt], attempt + 2, AI_RETRY_DELAYS.length + 1);
+        return askGeminiSearch(foodDesc, restaurant, attempt + 1);
+      }
       const text = (data.candidates?.[0]?.content?.parts || []).map(function (p) { return p.text || ''; }).join('');
       debugEl.textContent = text.slice(0, 600);
       const match = text.match(/\{[\s\S]*\}/);
@@ -2328,6 +3250,41 @@ savedEl.addEventListener('input', function (ev) {
   descBtn.disabled = false;
 });
 
+    // The four ways out of a busy AI. Each one is just the existing route, opened for you.
+    fbRetry.addEventListener('click', async function () {
+      if (!lastAiRetry) { hideManualFallback(); return; }
+      const again = lastAiRetry;
+      hideManualFallback();
+      statusEl.textContent = 'Thinking...';
+      await again();
+    });
+    fbManual.addEventListener('click', function () {
+      hideManualFallback();
+      manualBtn.click();
+    });
+    fbSearch.addEventListener('click', function () {
+      hideManualFallback();
+      document.querySelectorAll('.entryMethod').forEach(function (el) { el.style.display = 'none'; });
+      searchCard.style.display = 'block';
+      foodSearch.focus();
+      statusEl.textContent = 'Type a food name — this searches a real database, no AI involved.';
+    });
+    // "Scan a barcode" left the + menu on 11 Sep — the photo already reads barcodes — so the
+    // typed-number route lives here, where it is wanted: when the photo did not work.
+    document.getElementById('fbBarcode').addEventListener('click', function () {
+      hideManualFallback();
+      document.querySelectorAll('.entryMethod').forEach(function (el) { el.style.display = 'none'; });
+      document.getElementById('bcCard').style.display = 'block';
+      bc.focus();
+    });
+    fbSaved.addEventListener('click', function () {
+      hideManualFallback();
+      savedOpen = true;
+      showSaved();
+      savedEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      statusEl.textContent = 'Tap a saved meal to log it again.';
+    });
+
     manualBtn.addEventListener('click', function () {
       pending = null;
       editingMeal = null;
@@ -2339,7 +3296,7 @@ savedEl.addEventListener('input', function (ev) {
       fProtein.value = '';
       fFat.value = '';
       fCarbs.value = '';
-      editor.style.display = 'block';
+      openEditor();
       saveBtn.style.display = 'none';
       logBtns.style.display = 'none';
       warned = false;
@@ -2349,6 +3306,7 @@ savedEl.addEventListener('input', function (ev) {
 
     document.querySelectorAll('.tab').forEach(function (t) {
       t.addEventListener('click', function () {
+        setSheet(false);
         document.querySelectorAll('.view').forEach(function (v) { v.style.display = 'none'; });
         document.getElementById(t.dataset.view).style.display = 'block';
         document.querySelectorAll('.tab').forEach(function (b) { b.classList.remove('active'); });
@@ -2365,6 +3323,7 @@ savedEl.addEventListener('input', function (ev) {
     // changes. eatingSection and fitnessSection are simple show/hide, same pattern as .view.
     document.querySelectorAll('.mode').forEach(function (m) {
       m.addEventListener('click', function () {
+        setSheet(false);
         const fitness = m.dataset.section === 'fitness';
         document.getElementById('eatingSection').style.display = fitness ? 'none' : 'block';
         document.getElementById('fitnessSection').style.display = fitness ? 'block' : 'none';
@@ -2393,6 +3352,25 @@ savedEl.addEventListener('input', function (ev) {
     const wAdd = document.getElementById('wAdd');
     const weightEl = document.getElementById('weight');
     const historyEl = document.getElementById('history');
+    // Which day in History is currently opened up, or null for none. Only one at a time -
+    // the list can be months long and leaving several open makes it unreadable.
+    let openHistoryDay = null;
+    historyEl.addEventListener('click', function (ev) {
+      // The bookmark's svg has pointer-events:none, so ev.target is the button itself.
+      if (ev.target.classList.contains('savelog')) {
+        saveLoggedMeal(ev.target.dataset.day, Number(ev.target.dataset.i));
+        return;
+      }
+      if (ev.target.classList.contains('logname')) {
+        editLogEntry(ev.target.dataset.day, Number(ev.target.dataset.i));
+        return;
+      }
+      // closest(), not classList, because the tap almost always lands on a span inside the row.
+      const row = ev.target.closest ? ev.target.closest('.histday') : null;
+      if (!row) return;
+      openHistoryDay = (openHistoryDay === row.dataset.day) ? null : row.dataset.day;
+      showHistory();
+    });
     const adviceEl = document.getElementById('advice');
     const rName = document.getElementById('rName');
     const rIng = document.getElementById('rIng');
@@ -2427,6 +3405,8 @@ savedEl.addEventListener('input', function (ev) {
     const cFt = document.getElementById('cFt');
     const cIn = document.getElementById('cIn');
     const cLbs = document.getElementById('cLbs');
+    let cLbsTyped = false;
+    cLbs.addEventListener('input', function () { cLbsTyped = true; });
     const cAct = document.getElementById('cAct');
     const cTarget = document.getElementById('cTarget');
     const cDir = document.getElementById('cDir');
@@ -2444,6 +3424,70 @@ savedEl.addEventListener('input', function (ev) {
       calcPanel.style.display = opening ? 'block' : 'none';
       if (opening) calcPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+    // Progress cards: open/closed remembered per card, default closed.
+    const progOpen = loadJSON('progOpen', {});
+    document.querySelectorAll('.progHead').forEach(function (h) {
+      const body = document.getElementById(h.dataset.prog);
+      const open = !!progOpen[h.dataset.prog];
+      body.style.display = open ? 'block' : 'none';
+      h.classList.toggle('open', open);
+      h.addEventListener('click', function () {
+        const opening = body.style.display === 'none';
+        body.style.display = opening ? 'block' : 'none';
+        h.classList.toggle('open', opening);
+        progOpen[h.dataset.prog] = opening;
+        try { localStorage.setItem('progOpen', JSON.stringify(progOpen)); } catch (e) { /* best effort */ }
+      });
+    });
+    // One section open at a time; tapping an open header closes it.
+    // :not(.progHead) — the Progress cards share the heading style but keep their own state.
+    document.querySelectorAll('.secHead:not(.progHead)').forEach(function (h) {
+      h.addEventListener('click', function () {
+        const body = document.getElementById(h.dataset.sec);
+        const opening = body.style.display === 'none';
+        document.querySelectorAll('.secBody').forEach(function (b) { b.style.display = 'none'; });
+        document.querySelectorAll('.secHead:not(.progHead)').forEach(function (x) { x.classList.remove('open'); });
+        body.style.display = opening ? 'block' : 'none';
+        h.classList.toggle('open', opening);
+      });
+    });
+
+    // --- Keys, under Settings -------------------------------------------------------------
+    // The Gemini key drives photos, descriptions and recipes; the USDA key only raises the food
+    // search limit. Each row says which state it is in, and one tap sets, replaces or clears it.
+    // Neither key is ever written into a backup (see backupText()).
+    function showKeyStates() {
+      const g = document.getElementById('geminiKeyState'), gb = document.getElementById('geminiKeyBtn');
+      const u = document.getElementById('usdaKeyState'), ub = document.getElementById('usdaKeyBtn');
+      const gk = localStorage.getItem('geminiKey');
+      g.textContent = gk ? 'Gemini key: set (…' + gk.slice(-4) + '). Photos, descriptions and recipes work.'
+                         : 'Gemini key: not set. Photos, descriptions and recipes will ask for one. Free at aistudio.google.com.';
+      gb.textContent = gk ? 'Change or clear Gemini key' : 'Set Gemini key';
+      const uk = localStorage.getItem('usdaKey');
+      u.textContent = uk ? 'Food search key: set (…' + uk.slice(-4) + '). 1,000 searches an hour.'
+                         : 'Food search key: not set — using the shared key (30 searches an hour, 50 a day, shared with everyone else using it). Free at api.data.gov/signup.';
+      ub.textContent = uk ? 'Change or clear food search key' : 'Set food search key';
+    }
+    async function editKey(storageKey, title, message, placeholder, after) {
+      const cur = localStorage.getItem(storageKey) || '';
+      // askForText hands back null for both "Not now" and an empty Save, so clearing has to be
+      // an explicit word rather than an empty box.
+      const v = await askForText(title, message + (cur ? ' Or type CLEAR to remove the saved key.' : ''), placeholder);
+      if (!v) return;                                   // dismissed: nothing changes
+      const clearing = v.trim().toUpperCase() === 'CLEAR';
+      if (clearing) localStorage.removeItem(storageKey); else store(storageKey, v);
+      if (after) after(clearing ? null : v);
+      showKeyStates();
+    }
+    document.getElementById('geminiKeyBtn').addEventListener('click', function () {
+      editKey('geminiKey', 'Gemini API key', 'Paste a key from aistudio.google.com.', 'Paste your Gemini API key',
+        function (v) { apiKey = v; });
+    });
+    document.getElementById('usdaKeyBtn').addEventListener('click', function () {
+      editKey('usdaKey', 'Food search key', 'Paste a key from api.data.gov/signup.', 'Paste your USDA API key',
+        function (v) { try { if (v) localStorage.removeItem('usdaKeySkipped'); } catch (e) { /* best effort */ } });
+    });
+    showKeyStates();
 const bkBox = document.getElementById('bkBox');
     let restoreArmed = false;
     let restoreArmTimer = null;
@@ -2519,7 +3563,8 @@ const bkBox = document.getElementById('bkBox');
         statusEl.textContent = 'That is not a valid backup';
         return;
       }
-      if (data.app !== 'calorie-tracker') {
+      // JSON.parse('null') and JSON.parse('[]') both succeed, and `null.app` threw (11 Sep sweep).
+      if (!data || typeof data !== 'object' || Array.isArray(data) || data.app !== 'calorie-tracker') {
         statusEl.textContent = 'That is not a backup from this app';
         return;
       }
@@ -2567,6 +3612,11 @@ const bkBox = document.getElementById('bkBox');
       showWeight();
       showRoutineList();
       populateRoutinePick();
+      // Settings sit above every view now, so any of these can be the one on screen.
+      showHistory();
+      showRanks();
+      showGoals();
+      refreshExerciseDatalist();
       if (failed.length) {
         // store() writes its own warning to the status line on the next tick (see the comment
         // in store), so this has to be queued behind it or the generic message would be the
@@ -2586,6 +3636,8 @@ const bkBox = document.getElementById('bkBox');
       weights.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
       return store('weights', weights);
     }
+    // Wide on purpose: it only has to catch numbers no human weighs, not judge anyone.
+    function plausibleBodyweight(lbs) { return lbs >= 30 && lbs <= 1500; }
 
     wAdd.addEventListener('click', function () {
       const lbs = Number(wLbs.value);
@@ -2594,6 +3646,13 @@ const bkBox = document.getElementById('bkBox');
       // "Beginner, 0/100" until the bad row was found and deleted by hand.
       if (!(lbs > 0) || !wDate.value) {
         statusEl.textContent = 'Enter a date and a weight above zero';
+        return;
+      }
+      // An upper bound too (found by the 11 Sep sweep: 999,999,999 lb stored fine). A weigh-in
+      // this far off is a typo — "1700" for 170 — and one bad row flattens the chart and turns
+      // every strength ratio to nothing, exactly like the negative case above.
+      if (!plausibleBodyweight(lbs)) {
+        statusEl.textContent = 'That does not look like a bodyweight in lb (' + lbs + ') — check the number';
         return;
       }
       const previousWeights = weights;
@@ -2613,7 +3672,9 @@ const bkBox = document.getElementById('bkBox');
     });
 
     function showWeight() {
-      if (weights.length) cLbs.value = weights[weights.length - 1].lbs;
+      // Prefill from the last weigh-in — but never over a number he has typed and not yet used.
+      // Settings sit above the tabs now, so a Weight-tab tap mid-edit used to wipe the box.
+      if (weights.length && !cLbsTyped) cLbs.value = weights[weights.length - 1].lbs;
       drawChart();
       showAdvice();
       if (!weights.length) {
@@ -2797,8 +3858,26 @@ const bkBox = document.getElementById('bkBox');
       html += '<div class="mealhead">Every day</div>';
       keys.forEach(function (k) {
         const t = dayTotal(k);
-        html += '<div class="row"><span>' + k + '</span><span>' + Math.round(t.kcal) + ' kcal · ' +
+        const open = openHistoryDay === k;
+        html += '<div class="row histday" data-day="' + k + '">' +
+          '<span class="histname"><span class="histcaret' + (open ? ' open' : '') + '">' + ICON_CHEVRON_RIGHT + '</span>' + k + '</span>' +
+          '<span>' + Math.round(t.kcal) + ' kcal · ' +
           Math.round(t.protein) + 'p ' + Math.round(t.fat) + 'f ' + Math.round(t.carbs) + 'c</span></div>';
+        // An opened day lists what was actually eaten, grouped the same way Today groups it,
+        // with a bookmark on every row. That is the whole point of making days open: a meal
+        // you forgot to save at the time is still reachable weeks later.
+        if (!open) return;
+        const entries = log[k] || [];
+        ['Breakfast', 'Lunch', 'Dinner', 'Snack'].forEach(function (m) {
+          let rows = '';
+          entries.forEach(function (e, i) {
+            if ((e.meal || 'Snack') !== m) return;
+            rows += '<div class="row subrow"><span class="logname" data-day="' + k + '" data-i="' + i + '" title="Tap to fix the name or numbers">' + esc(e.name) + '</span><span>' + Math.round(e.kcal) +
+              ' kcal <button class="savelog" data-day="' + k + '" data-i="' + i + '" aria-label="Save to my meals" title="Save to my meals">' + ICON_BOOKMARK + '</button></span></div>';
+          });
+          if (!rows) return;
+          html += '<div class="mealhead subrow">' + (MEAL_ICONS[m] || '') + '<span>' + m + '</span></div>' + rows;
+        });
       });
       historyEl.innerHTML = badges + html;
     }
@@ -3066,7 +4145,7 @@ const bkBox = document.getElementById('bkBox');
         '<div class="row"><span>' + esc(per.name) + '</span><span>' + per.kcal + ' kcal · ' +
         per.protein + 'p ' + per.fat + 'f ' + per.carbs + 'c</span></div>' +
         (warn ? '<div class="sub">' + warn + '</div>' : '') +
-        (recipeSteps.length ? '<div class="mealhead">Method</div><ol class="steps"><li>' + recipeSteps.join('</li><li>') + '</li></ol>' : '') +
+        (recipeSteps.length ? '<div class="mealhead">Method</div><ol class="steps"><li>' + recipeSteps.map(esc).join('</li><li>') + '</li></ol>' : '') +
         '<div class="mealhead">Photo of the finished dish</div>' + photoBlock +
         '<input type="file" accept="image/*" capture="environment" id="rFinalPhoto">' +
         '<button id="rSave"' + (recipePhoto ? '' : ' disabled') + '>Save as a meal</button>';
@@ -3186,12 +4265,30 @@ const bkBox = document.getElementById('bkBox');
         statusEl.textContent = 'Fill in age, height and weight - all above zero';
         return;
       }
+      // Same bound as the Weight tab, because this number now becomes a weigh-in (below).
+      if (!plausibleBodyweight(lbs)) {
+        statusEl.textContent = 'That does not look like a bodyweight in lb (' + lbs + ') — check the number';
+        return;
+      }
       // Save the sex pick here too, not just from the dropdown's own 'change' event (line ~1817)
       // -- if the dropdown's default already matched what you wanted, the browser never fires
       // 'change' on it, so liftSex silently never got saved even though the calculator looked
       // right on screen. This is the bug behind "Progress screen still says set your goals."
       liftSex = cSex.value;
       store('liftSex', liftSex);
+      let recordedWeighIn = false;
+      // "Weight now" IS a weigh-in. The body map and the lift rankings read bodyweight from the
+      // Weight tab's weigh-ins, not from this box — so filling in the calculator and never
+      // logging a weigh-in left the body map hidden with no hint why (Owen, 11 Sep). Record
+      // today's weigh-in from this number unless one already exists for today.
+      // BUT only if he actually typed it (or has no weigh-ins at all): the box is prefilled
+      // with the LAST weigh-in, so recording that under today's date would invent a data point
+      // from a stale number and flatten the trend (11 Sep sweep, finding 1).
+      if ((cLbsTyped || !weights.length) && !weights.some(function (w) { return w.date === todayKey(); })) {
+        weights.push({ date: todayKey(), lbs: lbs });
+        if (saveWeights()) { showWeight(); showRanks(); recordedWeighIn = true; }
+      }
+      cLbsTyped = false;   // used now; the next prefill may overwrite it
       const kg = lbs * 0.45359237;
       const cm = inches * 2.54;
       const bmr = 10 * kg + 6.25 * cm - 5 * age + (cSex.value === 'm' ? 5 : -161);
@@ -3226,6 +4323,7 @@ const bkBox = document.getElementById('bkBox');
         html += '<div class="sub">Above 0.75 lb/week is faster than you can build muscle at your size. Most of the extra will be fat.</div>';
       }
       html += '<div class="sub">Protein at 1 g per lb of bodyweight, fat at 25% of calories, carbs are whatever is left.</div>' +
+        (recordedWeighIn ? '<div class="sub">Also logged ' + lbs + ' lb as today\'s weigh-in.</div>' : '') +
         '<button id="cApply">Use these as my targets</button>';
       cResult.innerHTML = html;
       statusEl.textContent = 'Worked out from a BMR of ' + Math.round(bmr);
@@ -5910,20 +7008,26 @@ const bkBox = document.getElementById('bkBox');
       showRankTrend();
       showVolumeChart();
       wSexNote.innerHTML = liftSex
-        ? ('Using ' + (liftSex === 'm' ? 'male' : 'female') + ' standards for the lifts that have them. Set from the Weight tab.')
-        : 'No standards set yet — pick your gender in <b>Eating → Weight → Settings → Work out your targets</b> to turn on rankings.';
+        ? ('Using ' + (liftSex === 'm' ? 'male' : 'female') + ' standards for the lifts that have them. Change it under ⚙ → Work out your targets.')
+        : 'No standards set yet — pick your gender under <b>⚙ (next to Eating / Fitness) → Work out your targets</b> to turn on rankings.';
       const bw = currentBodyweight();
-      document.getElementById('bodyMapCard').style.display = (liftSex && bw) ? 'block' : 'none';
+      // The card used to vanish entirely when something was missing, which read as "the body
+      // map is broken" (Owen, 11 Sep — he had his details in the targets calculator but no
+      // weigh-in). Now it stays and says exactly which of the two things it needs.
+      document.getElementById('bodyMapCard').style.display = 'block';
       if (!liftSex || !bw) {
-        wRankList.innerHTML = !bw
-          ? '<div class="sub">Log a weigh-in on the Weight tab first — ranking needs your bodyweight.</div>'
+        // Said ONCE, here. wSexNote above already covers the gender case, and the rank list
+        // used to repeat the weigh-in line a third time (usability review, 9).
+        document.getElementById('bodyMap').innerHTML = !bw
+          ? '<div class="sub">Needs your bodyweight: log a weigh-in on the Weight tab, or run <b>Settings → Work out my targets</b> with your weight typed in (that records one).</div>'
           : '';
+        wRankList.innerHTML = '';
         return;
       }
       const names = allLoggedExercises();
       if (!names.length) {
         wRankList.innerHTML = '<div class="sub">Log a workout to see your rankings here.</div>';
-        document.getElementById('bodyMap').innerHTML = '';
+        document.getElementById('bodyMap').innerHTML = '<div class="sub">Your bodyweight and standards are set — the map fills in from your first logged workout.</div>';
         return;
       }
       document.getElementById('bodyMap').innerHTML = bodySvg(computeMuscleScores(bw));
@@ -5969,7 +7073,14 @@ const bkBox = document.getElementById('bkBox');
       const region = ev.target.closest('.muscleRegion');
       if (!region) return;
       muscleFilter = region.dataset.muscle;
+      // The list lives in a fold that starts closed; open it, or the tap looks like nothing.
+      const head = document.querySelector('.progHead[data-prog="wRankList"]');
+      wRankList.style.display = 'block';
+      if (head) head.classList.add('open');
+      progOpen.wRankList = true;
+      try { localStorage.setItem('progOpen', JSON.stringify(progOpen)); } catch (e) { /* best effort */ }
       showRanks();
+      document.getElementById('rankListCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     wRankList.addEventListener('click', function (ev) {
