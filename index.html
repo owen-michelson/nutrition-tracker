@@ -50,6 +50,8 @@ body.mode-fitness { --accent: #8b7cf6; --on-accent: #1a1330; }
   gap: 10px; font-size: 14px; font-weight: 700;
 }
 #activeWorkoutBar.show { display: flex; }
+#activeWorkoutBar button { min-height: 0; }   /* the pinned bar stays slim */
+#iceRow input, #cupRow input { min-height: 0; }
 #awbInfo { flex: 1; cursor: pointer; }
 #awbControls { display: flex; gap: 8px; align-items: center; flex: none; font-weight: 700; }
 #awbControls button { padding: 5px 10px; font-size: 13px; background: var(--on-accent); color: var(--accent); }
@@ -103,6 +105,7 @@ button:disabled { opacity: 0.5; }
     .macroCell .mcBar .mcFill { height: 100%; }
     button, .photobtn {
       font-size: 16px;
+      min-height: 44px;
       padding: 10px 14px;
       border: none;
       border-radius: 8px;
@@ -206,10 +209,26 @@ button:disabled { opacity: 0.5; }
     .mealhead { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold; color: var(--text-dim); margin: 14px 0 2px; text-transform: uppercase; }
     .mealhead svg { width: 16px; height: 16px; flex: none; }
     .row { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--border); font-size: 15px; }
-    #logBtns button { margin-right: 6px; margin-top: 8px; }
+    #logBtns button { margin-top: 8px; }
+    /* Equal-width buttons in a grid, not auto-width buttons wrapping unevenly (13 Sep audit:
+       Breakfast was 96px, Lunch 72, Dinner 75, and Snack + Cancel wrapped onto a second row). */
+    #mealChoice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #mealChoice button { margin: 0; width: 100%; }
+    #mealChoice { margin-top: 8px; }
+    #logSuggested { display: block; width: 100%; }
+    #logSecondRow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    #logSecondRow button { margin: 0; width: 100%; }
+    #saveBtn { width: 100%; }
 #qtyRow { display: flex; gap: 6px; align-items: center; }
-    #qtyRow button { flex: 0 0 46px; background: var(--secondary-bg); color: var(--text); margin: 0; padding: 10px 0; font-size: 20px; }
+    #qtyRow button { flex: 0 0 46px; background: var(--secondary-bg); color: var(--text); margin: 0; padding: 10px 0; font-size: 20px; min-height: 44px; }
     #qtyRow input { flex: 1; text-align: center; margin: 0; }
+    /* One rule for every box you type or pick in (13 Sep layout audit: the goal editor's and the
+       library search were browser defaults, and #gReps ran off the right edge of the screen). The
+       old list of ids is kept below it so nothing that relied on it changes. */
+    input:not([type=checkbox]):not([type=file]):not([type=radio]), select, textarea {
+      font-size: 16px; padding: 9px; border: 1px solid var(--border); border-radius: 8px; width: 100%;
+      min-width: 0; margin-bottom: 8px; background: var(--card); color: var(--text); min-height: 44px; }
+    .nums input { min-width: 0; }
     #editor input, #bc, #grams, #desc, #descRestaurant, #foodSearch, #qtyRow input, #wDate, #wLbs, #rName, #rServings, #rIng, #cAge, #cFt, #cIn, #cLbs, #cSex, #cAct, #cTarget, #cDir, #cRate, #rtName, #wRoutinePick, #dineHall, #dineStation, #dineItem, #dineDate, #dineCupOz {
       font-size: 16px;
       padding: 9px;
@@ -251,12 +270,24 @@ button:disabled { opacity: 0.5; }
       align-items: center;
     }
     #hero canvas, #hero svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: block; }
-    #hero h1 { position: relative; z-index: 2; margin: 0; padding: 0 16px; }
+    #heroText { position: relative; z-index: 2; padding: 0 16px; }
+    #hero h1 { margin: 0; }
+    /* V-3 / N-2: the live one-line summary under the title. Reads --accent like everything
+       else the mode switcher recolors, so it goes cyan/violet with no extra JS. */
+    #heroSummary { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: var(--accent); }
     #modeTabs { display: flex; gap: 6px; margin-bottom: 14px; }
     #modeTabs #settingsBtn { flex: none; width: 52px; font-size: 20px; padding: 0; }
     .secHead { width: 100%; text-align: left; background: none; color: var(--text); font-weight: 700; font-size: 15px; padding: 10px 0; }
     .secHead::before { content: '▸ '; color: var(--accent); }
     .secHead.open::before { content: '▾ '; }
+    /* L-2: a visible boundary around the whole Settings panel, so it reads as its own screen
+       stacked above the current tab rather than a mystery block of cards with no edges. */
+    #calcPanel { border: 1px solid var(--accent); border-radius: 12px; padding: 4px 12px 8px; margin-bottom: 14px; }
+    #calcPanelHead { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 2px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+    #calcPanelHead b { font-size: 16px; }
+    /* 44px minimum tap target, same rule the app applies everywhere else (see the #tabs
+       comment above) — layout_audit.js checks this and caught it at the first size tried. */
+    #calcPanelClose { flex: none; width: 44px; min-height: 44px; padding: 0; font-size: 18px; line-height: 1; }
     #modeTabs button { flex: 1; background: var(--card); color: var(--text-dim); font-size: 15px; padding: 12px 2px; border: 1px solid var(--border); }
     #modeTabs button.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
     /* Measured on a 375px phone on 2026-08-30: these buttons were 34px tall
@@ -302,11 +333,49 @@ button:disabled { opacity: 0.5; }
       <circle cx="505" cy="70" r="7"   fill="var(--accent)" opacity="0.4"/>
       <circle cx="505" cy="70" r="3"   fill="var(--accent)"/>
     </svg>
-    <h1 id="appTitle">Calorie Tracker</h1>
+    <div id="heroText">
+      <h1 id="appTitle">Calorie Tracker</h1>
+      <!-- V-3 / N-2 (2026-09-14 QoL audit): filled in by updateHeroSummary() -- calories left
+           today in Eating mode, current training streak in Fitness mode. Empty until the first
+           render so there's no flash of wrong text before real data loads. -->
+      <p id="heroSummary"></p>
+    </div>
   </div>
+
+  <!-- N-6 (2026-09-15 QoL audit, Low, Owen approved 15 Sep -- "build it, if I don't like it we
+       can reverse the changes"): a single always-visible card with both halves of today, since
+       Eating and Fitness are otherwise fully separate tab trees with no shared "today" view.
+       Sits above the Eating/Fitness switcher so it shows no matter which mode is active. It
+       computes nothing new -- both lines reuse the exact numbers the hero line and the
+       Today/Fitness cards already show (dayTotal/targets/caloriesBurnedToday for Eating,
+       loadJSON('workouts')/workoutVolume/caloriesBurnedForWorkout for Fitness), filled in by
+       renderDailyOverview() further down. Reversible in one shot: this card, this comment, and
+       renderDailyOverview() (and its 4 call sites, each marked "N-6") are the whole feature --
+       delete all of it and nothing else changes. -->
+  <div id="dailyOverview" class="card">
+    <div class="sub" style="margin-bottom:4px"><b>Today, at a glance</b></div>
+    <div class="row" style="border-top:none"><span>🍽 Eating</span><span id="dailyOverviewEating" style="color:var(--text-dim)"></span></div>
+    <div class="row"><span>🏋 Fitness</span><span id="dailyOverviewFitness" style="color:var(--text-dim)"></span></div>
+  </div>
+
   <p id="status">Ready</p>
   <p id="debug"></p>
 <div id="undoBar" class="card" style="display:none"></div>
+
+  <!-- N-5 (2026-09-14 QoL audit, built as a follow-up pass): a one-time, dismissible in-app
+       suggestion to turn reminders on -- shown only once there's a real 2+ day streak on either
+       side (maybeShowReminderNudge(), called from the end of showToday() and showStreak()),
+       never on first load. This is the "don't ask before you've proven value" rule from the
+       brief: it never touches Notification.requestPermission() itself, it only opens Settings
+       to where the toggle lives -- the actual OS permission prompt only ever fires from inside
+       that toggle's own click handler, a real user gesture, further down this file. -->
+  <div id="reminderNudge" class="card" style="display:none">
+    <div class="sub" id="reminderNudgeText"></div>
+    <div class="btnStack">
+      <button type="button" id="reminderNudgeYes" class="grey">Turn on reminders</button>
+      <button type="button" id="reminderNudgeNo" class="grey">Not now</button>
+    </div>
+  </div>
 
   <div id="modeTabs">
     <button class="mode active" data-section="eating">Eating</button>
@@ -314,8 +383,18 @@ button:disabled { opacity: 0.5; }
     <button id="settingsBtn" class="grey" aria-label="Settings" title="Settings">⚙</button>
   </div>
   <!-- Settings live here, off the Weight tab (Owen, 11 Sep): backup and keys have nothing to do
-       with weight. Three sections, each closed until tapped, so the panel is three lines long. -->
+       with weight. Three sections, each closed until tapped, so the panel is three lines long.
+       L-2 (2026-09-14 QoL audit): confirmed live that opening this inserts the three cards
+       above whatever tab you're already looking at, with nothing marking where it starts or
+       ends besides the cards themselves. The bigger fix (a real overlay that replaces the
+       current view) is a bigger, riskier change than this pass calls for -- this heading + a
+       bordered box + a close button is the low-risk version: it's now visually obvious what
+       you're looking at and how to get out of it without just re-tapping the gear. -->
   <div id="calcPanel" style="display:none">
+    <div id="calcPanelHead">
+      <b>Settings</b>
+      <button type="button" id="calcPanelClose" class="grey" aria-label="Close Settings" title="Close Settings">×</button>
+    </div>
     <div class="card">
       <button type="button" class="secHead" data-sec="secTargets">Work out your targets</button>
       <div id="secTargets" class="secBody" style="display:none">
@@ -345,6 +424,16 @@ button:disabled { opacity: 0.5; }
         </select>
         <button id="cCalc">Work out my targets</button>
         <div id="cResult"></div>
+        <!-- N-1 (2026-09-14 QoL audit, Owen approved): credit calories burned lifting back onto
+             today's eating budget, the way MyFitnessPal/Cronometer do. Lives in this section
+             because it changes what "budget" means on the Eating side and reuses the same
+             bodyweight this calculator already asks for (Weight tab weigh-ins -- never asks a
+             second time). Default ON since Owen approved
+             shipping it that way, but toggle-able because it changes a number he's used to
+             reading one way -- the standing rule for anything like this. -->
+        <div class="sub" style="margin-top:14px"><b>Credit workout calories</b></div>
+        <div class="sub">Adds an estimate of calories burned lifting back into today's eating budget (MET-based: MET × your weight × the workout's length). Needs a bodyweight logged on the Weight tab and a timed workout — without both, nothing is added, silently, on purpose.</div>
+        <button type="button" id="creditWorkoutToggle" class="grey">On — tap to turn off</button>
       </div>
     </div>
     <div class="card">
@@ -355,6 +444,12 @@ button:disabled { opacity: 0.5; }
           <button id="bkMake">Make a backup</button>
           <button id="bkCopy" class="grey">Copy to clipboard</button>
           <button id="bkDownload" class="grey">Download as a file</button>
+        </div>
+        <!-- N-4 (2026-09-14 QoL audit): the backup above is restore-only, meant for this app to
+             read back in, not for looking at in a spreadsheet. This is the machine-readable
+             export -- one row per logged meal. -->
+        <div class="btnStack">
+          <button id="bkCsv" class="grey">Download food log as CSV</button>
         </div>
         <textarea id="bkBox" rows="4" placeholder="Your backup text appears here. To restore, paste a backup in and tap Restore."></textarea>
         <button id="bkRestore" class="grey">Restore from the box above</button>
@@ -368,6 +463,27 @@ button:disabled { opacity: 0.5; }
         <button id="geminiKeyBtn" class="grey">Set Gemini key</button>
         <div class="sub" id="usdaKeyState" style="margin-top:10px"></div>
         <button id="usdaKeyBtn" class="grey">Set food search key</button>
+      </div>
+    </div>
+    <!-- N-5 (2026-09-14 QoL audit): the honest version of "reminders/notifications." No backend
+         exists here (see Backup above -- everything is this browser only), so there is no real
+         push that can wake a fully-closed app; that needs a server sending the wake-up, which is
+         out of scope for this pass. What IS built: a real browser Notification, the same kind
+         the rest-timer already uses (notifyRestOver(), Fitness log), fired by a check that runs
+         once a minute while this app is open, plus on every reopen/foreground -- so it also
+         catches you the moment you next open the app even if it was fully closed when the time
+         passed. Permission is asked for from inside the toggle below, never before. -->
+    <div class="card">
+      <button type="button" class="secHead" data-sec="secReminders">Reminders</button>
+      <div id="secReminders" class="secBody" style="display:none">
+        <div class="sub">Nudges you to log a meal or a workout if you haven't yet by the time you pick. Only works while this app is open, freshly reopened, or (once allowed) running in the background on THIS phone -- it can't wake an app the phone has fully force-quit, since that needs a real push server and this app has none. Good for catching you before the day slips; not a guaranteed alarm.</div>
+        <div class="sub" id="notifPermState"></div>
+        <div class="sub" style="margin:10px 0 2px"><b>Log meals</b></div>
+        <button type="button" id="remMealsToggle" class="grey">Off — tap to turn on</button>
+        <input type="time" id="remMealsTime" value="18:00" aria-label="Meal reminder time">
+        <div class="sub" style="margin:10px 0 2px"><b>Work out</b></div>
+        <button type="button" id="remWorkoutToggle" class="grey">Off — tap to turn on</button>
+        <input type="time" id="remWorkoutTime" value="17:00" aria-label="Workout reminder time">
       </div>
     </div>
   </div>
@@ -384,7 +500,7 @@ button:disabled { opacity: 0.5; }
     <div class="card" id="saved"></div>
     <div class="card" id="today"></div>
     <button id="addBtn" class="fab" aria-label="Add food"><!-- batch 11 plus, colours inverted: the FAB has the accent background, so the disc takes --on-accent and the plus stroke takes --accent, rather than the drawn cyan-disc/dark-stroke version used on the grey quantity stepper below. --><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="36" fill="var(--on-accent)"/><path d="M 50 30 L 50 70 M 30 50 L 70 50" stroke="var(--accent)" stroke-width="8" stroke-linecap="round"/></svg></button>
-    <!-- The six entry-method icons (Design Skill batch 01, checked clean 2026-08-24). These sit
+    <!-- The four entry-method icons (Design Skill batch 01, checked clean 2026-08-24). These sit
          inline in the markup rather than in a JS constant because this menu is static HTML that
          never gets re-rendered - no TDZ risk to design around, unlike MEAL_ICONS.
          Each icon carries its own dark rounded-square ground (fill var(--on-accent)) as its first
@@ -395,11 +511,22 @@ button:disabled { opacity: 0.5; }
     <div id="sheetBackdrop"></div>
     <div id="addMenu" class="sheet" style="display:none">
       <button class="addOption" data-mode="photo"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><rect x="14" y="30" width="72" height="52" rx="10" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><path d="M 34 30 L 40 20 L 60 20 L 66 30 Z" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><rect x="66" y="36" width="14" height="9" rx="2" fill="var(--accent)"/><circle cx="50" cy="57" r="18" fill="#17171d" stroke="#0d0d12" stroke-width="3"/><circle cx="50" cy="57" r="11" fill="#3a3f4d"/><circle cx="46" cy="53" r="3.4" fill="#8f96a8"/><path d="M 14 60 L 14 72 A 10 10 0 0 0 24 82 L 40 82 L 40 60 Z" fill="#1e1e26"/></svg><span>Take a photo (reads barcodes too)</span></button>
-      <button class="addOption" data-mode="search"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><circle cx="44" cy="44" r="24" fill="none" stroke="var(--accent)" stroke-width="8"/><line x1="61" y1="61" x2="82" y2="82" stroke="var(--accent)" stroke-width="9" stroke-linecap="round"/><path d="M 34 40 A 14 14 0 0 1 46 28" stroke="#c7e9f0" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8"/></svg><span>Search a food</span></button>
       <button class="addOption" data-mode="dine"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><rect x="12" y="34" width="76" height="46" rx="9" fill="#3a3f4d" stroke="#0d0d12" stroke-width="3"/><rect x="18" y="40" width="64" height="34" rx="5" fill="#23232b"/><line x1="46" y1="40" x2="46" y2="74" stroke="#3a3f4d" stroke-width="2.5"/><circle cx="34" cy="57" r="9" fill="var(--accent)" opacity="0.9"/><rect x="58" y="47" width="18" height="7" rx="3.5" fill="#7d8296"/><rect x="58" y="58" width="14" height="7" rx="3.5" fill="#7d8296"/></svg><span>Dining hall food</span></button>
-      <button class="addOption" data-mode="desc"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><path d="M 18 20 Q 14 20 14 26 L 14 56 Q 14 62 20 62 L 34 62 L 30 76 L 50 62 L 78 62 Q 84 62 84 56 L 84 26 Q 84 20 78 20 Z" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><circle cx="38" cy="40" r="7" fill="var(--accent)"/><circle cx="58" cy="40" r="7" fill="var(--accent)"/><circle cx="78" cy="40" r="7" fill="var(--accent)"/></svg><span>Describe what I ate</span></button>
+      <button class="addOption" data-mode="type"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><path d="M 18 20 Q 14 20 14 26 L 14 56 Q 14 62 20 62 L 34 62 L 30 76 L 50 62 L 78 62 Q 84 62 84 56 L 84 26 Q 84 20 78 20 Z" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><circle cx="38" cy="40" r="7" fill="var(--accent)"/><circle cx="58" cy="40" r="7" fill="var(--accent)"/><circle cx="78" cy="40" r="7" fill="var(--accent)"/></svg><span>Type what you ate</span></button>
       <button class="addOption" data-mode="manual"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="24" fill="var(--on-accent)"/><rect x="18" y="16" width="64" height="68" rx="10" fill="#2a2a33" stroke="#0d0d12" stroke-width="3"/><g fill="var(--accent)"><rect x="27" y="26" width="14" height="12" rx="3"/><rect x="43" y="26" width="14" height="12" rx="3"/><rect x="59" y="26" width="14" height="12" rx="3"/><rect x="27" y="42" width="14" height="12" rx="3"/><rect x="43" y="42" width="14" height="12" rx="3"/><rect x="59" y="42" width="14" height="12" rx="3"/></g><rect x="27" y="58" width="46" height="12" rx="3" fill="#9a9aa5"/></svg><span>Type numbers myself</span></button>
       <button id="addCancel" class="grey">Cancel</button>
+    </div>
+    <!-- One box, two ways to turn it into numbers (Owen, 13 Sep: "Search a food" and "Describe what
+         I ate" looked like the same thing). They are not: the database gives real published figures
+         for a plain food, per 100 g, then asks how much; the AI guesses a whole plate or a restaurant
+         meal from a description. The choice now happens here, where the difference can be read. -->
+    <div class="card entryMethod" id="typeCard">
+      <input id="typed" type="text" placeholder="What did you eat? e.g. banana, or chicken burrito bowl">
+      <input id="typedRestaurant" type="text" placeholder="Restaurant (optional) — e.g. Chipotle">
+      <button id="typeLookup">Look it up — real numbers from the food database</button>
+      <div class="sub" style="padding:0 0 8px">Best for a plain food: banana, oats, chicken breast. You pick the grams after.</div>
+      <button id="typeAsk" class="grey">Ask the AI — estimate a plate or a restaurant meal</button>
+      <div class="sub" style="padding:0">Best for a mixed plate or a menu item. It is a guess, not a label.</div>
     </div>
     <div class="card entryMethod" id="descCard">
       <input id="desc" type="text" placeholder="Describe what you ate">
@@ -551,17 +678,19 @@ button:disabled { opacity: 0.5; }
       <!-- When the food came from the dining card, the meal was already chosen there, so it is
            asked ONCE: one big "Log to Lunch" button, with the four-way choice behind a link. -->
       <button id="logSuggested" style="display:none"></button>
-      <button id="logOtherMeal" class="grey" style="display:none">Different meal</button>
       <div id="mealChoice">
       <button class="meal">Breakfast</button>
       <button class="meal">Lunch</button>
       <button class="meal">Dinner</button>
       <button class="meal">Snack</button>
       </div>
+      <div id="logSecondRow">
+      <button id="logOtherMeal" class="grey" style="display:none">Different meal</button>
       <!-- The four meal buttons were the only way out of this panel: tapping a saved meal by
            mistake left you stuck picking a meal for food you had not eaten, with nothing to
            press that did not log something. -->
       <button id="cancelLog" class="grey">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -570,9 +699,11 @@ button:disabled { opacity: 0.5; }
   </div>
 
   <div id="weightView" class="view" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <b style="font-size:18px">Weight</b>
-    </div>
+    <!-- V-4 (2026-09-14 QoL audit): this used to repeat "Weight" as a bare heading here, the
+         only one of the four Eating tabs that restated its own tab name. Today/History/Recipes
+         all start straight into their first card, so the heading was dropped to match rather
+         than adding matching headings to the other three -- smaller change, and the tab bar
+         above already says which tab you're on. -->
     <div class="card" id="advice"></div>
     <div class="card">
       <b>Log a weigh-in</b>
@@ -622,6 +753,10 @@ button:disabled { opacity: 0.5; }
     <div id="wRoutinesSub" class="wview">
       <div class="card" id="routineList"></div>
       <button id="newRoutineBtn" class="fab">+ New routine</button>
+      <!-- Owen's PPL program, built into the app so he never types 25 exercises on a phone. Tap
+           twice (the second tap confirms, and the arm expires after 15 s like Restore does). -->
+      <button id="loadPPL" class="grey" style="width:100%;margin-top:8px">Load my PPL program (Push / Pull / Legs)</button>
+      <div class="sub" id="loadPPLNote"></div>
       <div class="card" id="routineEditor" style="display:none">
         <input id="rtName" placeholder="Routine name — e.g. Push day">
         <div id="rtExercises"></div>
@@ -674,6 +809,10 @@ button:disabled { opacity: 0.5; }
         <div id="streakCal"></div>
         <div class="sub" id="calHint" style="padding-top:8px"></div>
       </div>
+      <!-- L-4 (2026-09-14 QoL audit): badges used to exist only on the Eating side (History
+           tab) even though Fitness has exactly the kind of countable milestones badges are for.
+           Filled in by fitnessBadgesHTML(), same earned/unearned component as Eating's. -->
+      <div class="card" id="fitnessBadges"></div>
       <div class="card" id="recentWorkouts"></div>
       <div class="card" id="wSexNote"></div>
       <!-- These fold to their heading (Owen, 11 Sep) and remember whether he opened them. The
@@ -1414,7 +1553,7 @@ let qty = 1;
           manualBtn.click();
           return;
         }
-        const cardIds = { photo: 'photoCard', bc: 'bcCard', search: 'searchCard', dine: 'dineCard', desc: 'descCard' };
+        const cardIds = { photo: 'photoCard', bc: 'bcCard', search: 'searchCard', dine: 'dineCard', desc: 'descCard', type: 'typeCard' };
         const card = document.getElementById(cardIds[b.dataset.mode] || 'descCard');
         card.style.display = 'block';
         // The card opens below the whole Today card, about 900px down on a phone; bring it up
@@ -1838,6 +1977,18 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       return hit ? hit.value : 0;
     }
 
+    // N-3 (2026-09-14 QoL audit): USDA ranks results by its own relevance scoring, which often
+    // puts a branded product ("Wonder Natural Foods Corp BANANA") above the plain generic food
+    // ("Banana, raw") a user actually typed for. Rather than guess from the description text,
+    // USDA's own `dataType` field already says whether a result is a specific commercial
+    // product ("Branded") or a generic/reference food ("Foundation", "SR Legacy",
+    // "Survey (FNDDS)") — that's the real signal, so use it. Falls back to the brand fields if
+    // dataType is ever missing.
+    function isGenericFood(food) {
+      if (food.dataType) return food.dataType !== 'Branded';
+      return !(food.brandOwner || food.brandName);
+    }
+
     // USDA's search results report nutrients per 100g regardless of the food's data type
     // (Branded, Foundation, SR Legacy) — the same convention Open Food Facts uses, which is
     // why this can feed straight into the existing per100/grams/usePortion flow unchanged.
@@ -1878,7 +2029,14 @@ if (data.error && /API key/i.test(data.error.message || '')) {
         statusEl.textContent = 'The food database is not answering properly — try again in a minute';
         return;
       }
-      const foods = (data.foods || []).map(parseUsdaFood).filter(function (f) { return f.kcal || f.protein || f.fat || f.carbs; });
+      // N-3: re-rank rather than re-search — generic/reference foods first, USDA's own
+      // relevance order preserved within each group (Array.prototype.sort is stable, ES2019+,
+      // which covers every browser this app targets).
+      const foods = (data.foods || [])
+        .map(function (raw) { return { parsed: parseUsdaFood(raw), generic: isGenericFood(raw) }; })
+        .filter(function (x) { return x.parsed.kcal || x.parsed.protein || x.parsed.fat || x.parsed.carbs; })
+        .sort(function (a, b) { return (a.generic ? 0 : 1) - (b.generic ? 0 : 1); })
+        .map(function (x) { return x.parsed; });
       if (!foods.length) {
         foodSearchResults.innerHTML = '<div class="sub">No matches — try a simpler search term.</div>';
         statusEl.textContent = 'No matches';
@@ -2638,7 +2796,12 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       el.innerHTML = '<div><b>' + esc(f.name) + '</b></div>' +
         '<div class="sub" style="padding:2px 0 0">' + Math.round(f.kcal * qty) + ' kcal · ' +
         Math.round(f.protein * qty * 10) / 10 + 'p ' + Math.round(f.fat * qty * 10) / 10 + 'f ' + Math.round(f.carbs * qty * 10) / 10 + 'c' +
-        (qty !== 1 ? ' (×' + qty + ')' : '') + (kind ? ' · ' + esc(kind) : '') + '</div>';
+        (qty !== 1 ? ' (×' + qty + ')' : '') + (kind ? ' · ' + esc(kind) : '') + '</div>' +
+        // V-2 (2026-09-14 QoL audit): "1p 0f 23c" is unexplained everywhere it's used. Rather
+        // than spelling protein/fat/carbs out in full on every compact row (which would break
+        // the point of a compact row), one small legend rides along wherever the shorthand
+        // appears -- this is the first place a user sees it in the food-logging flow.
+        '<div class="sub" style="opacity:.65;padding-top:2px">p = protein, f = fat, c = carbs, in grams</div>';
     }
     function logMealFor(hallMeal) {
       if (!hallMeal) return null;
@@ -2653,8 +2816,8 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       big.dataset.meal = meal || '';
       big.textContent = meal ? 'Log to ' + meal : '';
       big.style.display = meal ? 'block' : 'none';
-      other.style.display = meal ? 'inline-block' : 'none';
-      four.style.display = meal ? 'none' : 'block';
+      other.style.display = meal ? 'block' : 'none';
+      four.style.display = meal ? 'none' : 'grid';
     }
     document.getElementById('logSuggested').addEventListener('click', function () {
       const m = [...document.querySelectorAll('#mealChoice .meal')].find(function (b) { return b.textContent === document.getElementById('logSuggested').dataset.meal; });
@@ -2988,6 +3151,16 @@ savedEl.addEventListener('input', function (ev) {
       todayEl.dataset.day = todayKey();
       const entries = log[todayKey()] || [];
       const t = dayTotal(todayKey());
+      // N-1 (2026-09-14 QoL audit, Owen approved): credit today's workout calories onto today's
+      // budget, shown plainly rather than silently -- see caloriesBurnedToday() near
+      // currentBodyweight() for the estimate itself. effTargets is a shallow copy so the shared
+      // `targets` object (read by History, Goals, the calculator, backupText()) is never mutated
+      // -- only THIS render's kcal target changes, and only when there is something real to add.
+      const workoutCredit = caloriesBurnedToday();
+      const effTargets = workoutCredit > 0 ? Object.assign({}, targets, { kcal: targets.kcal + workoutCredit }) : targets;
+      const budgetNote = workoutCredit > 0
+        ? '<div class="sub" style="margin-bottom:8px">' + niceNumber(effTargets.kcal) + ' cal budget (+' + workoutCredit + ' from today\'s workout)</div>'
+        : '';
       let list = '';
       ['Breakfast', 'Lunch', 'Dinner', 'Snack'].forEach(function (m) {
         let rows = '';
@@ -3012,9 +3185,12 @@ savedEl.addEventListener('input', function (ev) {
         '<span style="display:inline-flex;width:20px;height:20px;margin-right:6px;flex:none">' +
         (fstreak.count ? STREAK_ICON_ACTIVE : STREAK_ICON_INACTIVE) + '</span>' +
         '<span class="sub" style="padding:0">' + (fstreak.count ? fstreak.count + '-day logging streak' : 'Log today to start a streak') + '</span></div>';
-      todayEl.innerHTML = streakLine + '<b>Today — ' + entries.length + ' meals</b><br><br>' +
-        macroGridHTML(t, targets) +
+      todayEl.innerHTML = streakLine + budgetNote + '<b>Today — ' + entries.length + ' meal' + (entries.length === 1 ? '' : 's') + '</b><br><br>' +
+        macroGridHTML(t, effTargets) +
         '<br>' + list;
+      updateHeroSummary();
+      renderDailyOverview(); // N-6
+      maybeShowReminderNudge();
     }
 
     document.querySelectorAll('.meal').forEach(function (b) {
@@ -3219,6 +3395,26 @@ savedEl.addEventListener('input', function (ev) {
       }
     }
 
+    // The combined "Type what you ate" card hands off to the two existing paths. The search card
+    // stays on screen afterwards (its own box lets him refine the term); the AI path needs no card.
+    const typed = document.getElementById('typed');
+    const typedRestaurant = document.getElementById('typedRestaurant');
+    document.getElementById('typeLookup').addEventListener('click', function () {
+      if (!typed.value.trim()) { statusEl.textContent = 'Type a food first.'; return; }
+      document.getElementById('typeCard').style.display = 'none';
+      foodSearch.value = typed.value.trim();
+      searchCard.style.display = 'block';
+      foodSearchBtn.click();
+    });
+    document.getElementById('typeAsk').addEventListener('click', function () {
+      if (!typed.value.trim()) { statusEl.textContent = 'Type what you ate first.'; return; }
+      document.getElementById('typeCard').style.display = 'none';
+      desc.value = typed.value.trim();
+      descRestaurant.value = typedRestaurant.value.trim();
+      descBtn.click();
+    });
+    typed.addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('typeLookup').click(); });
+
     descBtn.addEventListener('click', async function () {
   if (!desc.value) return;
   lastPhotoTaken = null; // typed, not photographed — this save will need its own photo
@@ -3331,8 +3527,79 @@ savedEl.addEventListener('input', function (ev) {
         m.classList.add('active');
         document.body.classList.toggle('mode-fitness', fitness);
         if (fitness) { showRoutineList(); populateRoutinePick(); refreshExerciseDatalist(); renderUnitButtons(); }
+        // N-1 (2026-09-14 QoL audit): re-render Today on the way IN to Eating, not just the hero
+        // line. Found by actually switching tabs after finishing a workout during this same
+        // pass: the hero line updated (it always re-derives on every mode switch) but the Today
+        // card underneath still showed the stale pre-workout target, because nothing had told it
+        // to redraw since page load. A workout finished on the Fitness tab is exactly the
+        // situation where Today's numbers are now out of date without Today itself having done
+        // anything -- the whole point of crediting calories across the two halves.
+        if (!fitness) showToday();
+        updateHeroSummary();
+        renderDailyOverview(); // N-6
       });
     });
+
+    // V-3 / N-2 (2026-09-14 QoL audit): the hero banner used to be pure decoration — a static
+    // title over an animated particle field, on a screen this visible (top of every view) with
+    // zero real data on it. Now it's a live one-line readout: calories left today in Eating
+    // mode, current training streak in Fitness mode. Reads --accent like everything else the
+    // mode switcher recolors, so no extra wiring is needed when the mode flips.
+    // Called from the mode-switch handler above (immediate feedback on tap), from the end of
+    // showToday() (food logged/edited/deleted), and from the end of showStreak() (a workout
+    // just got saved, or the streak calendar just got paged).
+    function updateHeroSummary() {
+      const el = document.getElementById('heroSummary');
+      if (!el) return;
+      if (document.body.classList.contains('mode-fitness')) {
+        const s = computeStreak();
+        el.textContent = s.count
+          ? (s.count + '-day streak')
+          : 'No active streak — log a workout to start one';
+      } else {
+        const t = dayTotal(todayKey());
+        // N-1: same credited budget the Today card's own budget line shows -- this is the
+        // number Owen reads at the top of every screen, so it has to agree with Today or it
+        // reads as two different apps disagreeing about the same day.
+        const remaining = Math.round(targets.kcal + caloriesBurnedToday() - t.kcal);
+        el.textContent = remaining >= 0
+          ? (remaining + ' kcal left today')
+          : (Math.abs(remaining) + ' kcal over today');
+      }
+    }
+
+    // N-6 (2026-09-15 QoL audit): the combined Eating+Fitness "today" card, above the mode
+    // switcher. Reads today's totals the same way updateHeroSummary() and showStreak() already
+    // do -- no new math, just both halves in one place. Called from every place
+    // updateHeroSummary() is called (mode switch, end of showToday(), end of showStreak()) plus
+    // once on initial load, so it's never stale relative to the hero line above it.
+    function renderDailyOverview() {
+      const eatEl = document.getElementById('dailyOverviewEating');
+      const fitEl = document.getElementById('dailyOverviewFitness');
+      if (!eatEl || !fitEl) return;
+
+      const t = dayTotal(todayKey());
+      const remaining = Math.round(targets.kcal + caloriesBurnedToday() - t.kcal);
+      eatEl.textContent = Math.round(t.kcal) + ' kcal logged · ' +
+        (remaining >= 0 ? (remaining + ' left') : (Math.abs(remaining) + ' over'));
+
+      // Same source as showRecentWorkouts(): read from storage, not the in-memory `workouts`
+      // array, so this is correct on the very first render too (same reasoning as
+      // caloriesBurnedToday() above).
+      const todays = loadJSON('workouts', []).filter(function (w) { return w.date === todayKey(); });
+      if (!todays.length) {
+        fitEl.textContent = 'No workout logged today';
+      } else {
+        // Same shape as showRecentWorkouts()'s row: routine name, set count, duration. Most
+        // recent one if more than one session got logged today.
+        const w = todays[todays.length - 1];
+        const v = workoutVolume(w);
+        const credited = caloriesBurnedForWorkout(w);
+        fitEl.textContent = (w.routine || 'Workout') + ' · ' + v.sets + ' set' + (v.sets === 1 ? '' : 's') +
+          (w.durationSec ? (' · ' + formatDuration(w.durationSec)) : '') +
+          (credited ? (' · +' + credited + ' kcal credited') : '');
+      }
+    }
 
     document.querySelectorAll('.wtab').forEach(function (t) {
       t.addEventListener('click', function () {
@@ -3424,6 +3691,11 @@ savedEl.addEventListener('input', function (ev) {
       calcPanel.style.display = opening ? 'block' : 'none';
       if (opening) calcPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+    // L-2: the × in the new Settings header is a second, more obvious way out than re-tapping
+    // the gear (which still works too — this doesn't replace it, just adds the expected control).
+    document.getElementById('calcPanelClose').addEventListener('click', function () {
+      calcPanel.style.display = 'none';
+    });
     // Progress cards: open/closed remembered per card, default closed.
     const progOpen = loadJSON('progOpen', {});
     document.querySelectorAll('.progHead').forEach(function (h) {
@@ -3451,6 +3723,22 @@ savedEl.addEventListener('input', function (ev) {
         h.classList.toggle('open', opening);
       });
     });
+
+    // L-3 (2026-09-14 QoL audit): shared by the "no standards set" prompt on Fitness → Progress
+    // so it can open Settings AND expand the right section in one tap, instead of leaving Owen
+    // to find the gear and the correct accordion himself. Same open/scroll steps the gear button
+    // and the section headers just above already do individually — this just does all of them
+    // for one named section, from wherever it's called.
+    function openSettingsSection(sectionId) {
+      calcPanel.style.display = 'block';
+      document.querySelectorAll('.secBody').forEach(function (b) { b.style.display = 'none'; });
+      document.querySelectorAll('.secHead:not(.progHead)').forEach(function (x) { x.classList.remove('open'); });
+      const body = document.getElementById(sectionId);
+      const head = document.querySelector('.secHead[data-sec="' + sectionId + '"]');
+      if (body) body.style.display = 'block';
+      if (head) head.classList.add('open');
+      calcPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     // --- Keys, under Settings -------------------------------------------------------------
     // The Gemini key drives photos, descriptions and recipes; the USDA key only raises the food
@@ -3488,6 +3776,59 @@ savedEl.addEventListener('input', function (ev) {
         function (v) { try { if (v) localStorage.removeItem('usdaKeySkipped'); } catch (e) { /* best effort */ } });
     });
     showKeyStates();
+
+    // --- Reminders settings UI (N-5, 2026-09-14 QoL audit follow-up) -------------------------
+    // Only touches reminder prefs + Notification.permission here -- never the `workouts` array,
+    // which is a `let` declared much further down this file and not safe to read yet at this
+    // point in a fresh page load (same temporal-dead-zone trap noted elsewhere in this file).
+    // The part of this feature that DOES need `workouts` (the nudge banner, the firing check)
+    // lives in its own section near the bottom, after `workouts` exists.
+    const remMealsToggle = document.getElementById('remMealsToggle');
+    const remMealsTime = document.getElementById('remMealsTime');
+    const remWorkoutToggle = document.getElementById('remWorkoutToggle');
+    const remWorkoutTime = document.getElementById('remWorkoutTime');
+    const notifPermState = document.getElementById('notifPermState');
+
+    function reminderMealsOn() { return loadJSON('reminderMealsOn', false); }
+    function reminderWorkoutOn() { return loadJSON('reminderWorkoutOn', false); }
+
+    function renderReminderSettings() {
+      const mealsOn = reminderMealsOn(), workoutOn = reminderWorkoutOn();
+      remMealsToggle.textContent = mealsOn ? 'On — tap to turn off' : 'Off — tap to turn on';
+      remWorkoutToggle.textContent = workoutOn ? 'On — tap to turn off' : 'Off — tap to turn on';
+      remMealsTime.value = localStorage.getItem('reminderMealsTime') || '18:00';
+      remWorkoutTime.value = localStorage.getItem('reminderWorkoutTime') || '17:00';
+      const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+      notifPermState.textContent =
+        perm === 'granted' ? 'This phone allows real notifications for this app.' :
+        perm === 'denied' ? 'Notifications are blocked for this app in your phone settings — reminders will still show inside the app, just not as a lock-screen alert.' :
+        perm === 'unsupported' ? 'This browser does not support notifications — reminders will show inside the app only.' :
+        'Turning a reminder on below will ask to allow notifications.';
+    }
+
+    // Same reasoning as startRest() further down: ask for permission from inside this click
+    // handler specifically, a real user gesture, and only the first time a reminder is turned
+    // ON -- never on page load, never before he's actually asked for one.
+    remMealsToggle.addEventListener('click', function () {
+      const turningOn = !reminderMealsOn();
+      store('reminderMealsOn', turningOn);
+      if (turningOn && 'Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(renderReminderSettings);
+      }
+      renderReminderSettings();
+    });
+    remWorkoutToggle.addEventListener('click', function () {
+      const turningOn = !reminderWorkoutOn();
+      store('reminderWorkoutOn', turningOn);
+      if (turningOn && 'Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(renderReminderSettings);
+      }
+      renderReminderSettings();
+    });
+    remMealsTime.addEventListener('change', function () { store('reminderMealsTime', remMealsTime.value || '18:00'); });
+    remWorkoutTime.addEventListener('change', function () { store('reminderWorkoutTime', remWorkoutTime.value || '17:00'); });
+    renderReminderSettings();
+
 const bkBox = document.getElementById('bkBox');
     let restoreArmed = false;
     let restoreArmTimer = null;
@@ -3510,7 +3851,7 @@ const bkBox = document.getElementById('bkBox');
     document.getElementById('bkMake').addEventListener('click', function () {
       bkBox.value = backupText();
       restoreArmed = false;
-      statusEl.textContent = 'Backup made - ' + meals.length + ' saved meals, ' + Object.keys(log).length + ' days, ' + weights.length + ' weigh-ins';
+      statusEl.textContent = 'Backup made - ' + meals.length + ' saved meal' + (meals.length === 1 ? '' : 's') + ', ' + Object.keys(log).length + ' day' + (Object.keys(log).length === 1 ? '' : 's') + ', ' + weights.length + ' weigh-in' + (weights.length === 1 ? '' : 's');
     });
 
     document.getElementById('bkCopy').addEventListener('click', function () {
@@ -3553,6 +3894,40 @@ const bkBox = document.getElementById('bkBox');
       a.click();
       setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 4000);
       statusEl.textContent = 'Downloaded. If nothing happened, use Copy instead.';
+    });
+
+    // N-4 (2026-09-14 QoL audit): the only export before this was the backup JSON blob above,
+    // built for restoring into this same app, not for reading -- there was no way to look at
+    // his own food log in a spreadsheet. Walks the same `log` object Today/History already
+    // read, one row per logged meal, oldest to newest.
+    function foodLogCSV() {
+      const rows = [['Date', 'Food', 'Calories', 'Protein (g)', 'Fat (g)', 'Carbs (g)']];
+      Object.keys(log).sort().forEach(function (day) {
+        (log[day] || []).forEach(function (e) {
+          rows.push([day, e.name, Math.round(e.kcal), Math.round(e.protein * 10) / 10, Math.round(e.fat * 10) / 10, Math.round(e.carbs * 10) / 10]);
+        });
+      });
+      // RFC 4180 escaping: quote a field, doubling any internal quotes, whenever it contains a
+      // comma, a quote or a newline. Food names come from typed descriptions, AI estimates and
+      // pasted recipe text, so a stray comma or quote in one is routine, not an edge case.
+      return rows.map(function (row) {
+        return row.map(function (cell) {
+          const s = String(cell);
+          return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }).join(',');
+      }).join('\r\n');
+    }
+    document.getElementById('bkCsv').addEventListener('click', function () {
+      // Same download mechanics as bkDownload just above (anchor added to the DOM before
+      // click(), blob URL revoked on a delay) -- same iOS Safari async-download reason.
+      const url = URL.createObjectURL(new Blob([foodLogCSV()], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'calorie-food-log-' + todayKey() + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 4000);
+      statusEl.textContent = 'Food log downloaded as CSV.';
     });
 
     document.getElementById('bkRestore').addEventListener('click', function () {
@@ -3626,7 +4001,7 @@ const bkBox = document.getElementById('bkBox');
           statusEl.textContent = 'Restore INCOMPLETE — ' + failed.join(', ') + ' did NOT save. Free up space and tap Restore again.';
         }, 0);
       } else {
-        statusEl.textContent = 'Restored - ' + meals.length + ' saved meals, ' + Object.keys(log).length + ' days';
+        statusEl.textContent = 'Restored - ' + meals.length + ' saved meal' + (meals.length === 1 ? '' : 's') + ', ' + Object.keys(log).length + ' day' + (Object.keys(log).length === 1 ? '' : 's');
       }
     });
     let calcDraft = null;
@@ -3829,6 +4204,45 @@ const bkBox = document.getElementById('bkBox');
       return '<b>Badges</b><div style="margin:8px 0 16px">' + chips + '</div>';
     }
 
+    // L-4 (2026-09-14 QoL audit): the Fitness equivalent of the Eating badges just above.
+    // Deliberately reuses the SAME component shape (a chip, the same earned/unearned style
+    // logic, the same computed-fresh-every-time approach) and the SAME artwork constants
+    // (BADGE_PLATES/CALENDAR/TARGET/SILVER/GOLD, all defined above) rather than building a
+    // second badge system — the ask was "the same pattern", not a parallel one. Icons are
+    // reused for what they already depict: a calendar check for a first logged session, weight
+    // plates for a volume milestone, the target-and-arrow for a personal record, and the same
+    // silver/gold flame tiers the Eating streak uses for 7- and 30-day streaks, just measuring
+    // training days instead of logging days.
+    function computeWorkoutBadgeContext() {
+      const hasPR = workouts.some(function (w) {
+        return w.exercises.some(function (e) {
+          return e.sets.some(function (s) { return s.pr; });
+        });
+      });
+      return {
+        workoutCount: workouts.length,
+        bestStreak: computeStreak().best,
+        hasPR: hasPR
+      };
+    }
+    const FITNESS_BADGES = [
+      { label: 'First workout', icon: BADGE_CALENDAR, test: function (ctx) { return ctx.workoutCount >= 1; } },
+      { label: '10 workouts', icon: BADGE_PLATES, test: function (ctx) { return ctx.workoutCount >= 10; } },
+      { label: 'First PR', icon: BADGE_TARGET, test: function (ctx) { return ctx.hasPR; } },
+      { label: '7-day training streak', icon: BADGE_SILVER, test: function (ctx) { return ctx.bestStreak >= 7; } },
+      { label: '30-day training streak', icon: BADGE_GOLD, test: function (ctx) { return ctx.bestStreak >= 30; } }
+    ];
+    function fitnessBadgesHTML() {
+      const ctx = computeWorkoutBadgeContext();
+      const chips = FITNESS_BADGES.map(function (b) {
+        const earned = b.test(ctx);
+        return '<span class="badgeChip' + (earned ? '' : ' notEarned') + '" style="' +
+          (earned ? 'background:var(--accent);color:var(--on-accent)' : 'background:var(--track);color:var(--text-dim)') +
+          '">' + b.icon + '<span>' + b.label + '</span></span>';
+      }).join('');
+      return '<b>Badges</b><div style="margin:8px 0 16px">' + chips + '</div>';
+    }
+
     function showHistory() {
       const keys = Object.keys(log).filter(function (k) { return log[k].length; }).sort().reverse();
       const badges = badgesHTML();
@@ -3847,7 +4261,10 @@ const bkBox = document.getElementById('bkBox');
         weeks[ws].fat += t.fat;
         weeks[ws].carbs += t.carbs;
       });
-      let html = '<b>Weekly averages</b>';
+      let html = '<b>Weekly averages</b>' +
+        // V-2: same legend as the food-log confirmation card -- this covers both the weekly
+        // averages loop below and the per-day list further down, since both are on this screen.
+        '<div class="sub" style="opacity:.65;padding:2px 0 6px">p = protein, f = fat, c = carbs, in grams</div>';
       Object.keys(weeks).sort().reverse().forEach(function (ws) {
         const w = weeks[ws];
         html += '<div class="row"><span>Week of ' + ws + '</span><span>' +
@@ -4134,7 +4551,11 @@ const bkBox = document.getElementById('bkBox');
           '<label for="rFinalPhoto" class="photobtn grey">Retake photo</label>'
         : '<div class="sub">Required — take a photo of the finished dish before saving.</div>' +
           '<label for="rFinalPhoto" class="photobtn">Photograph the finished dish</label>';
-      rResult.innerHTML = '<b>Ingredients</b>' + rows +
+      rResult.innerHTML = '<b>Ingredients</b>' +
+        // V-2: same legend, covers the per-ingredient rows, whole-batch line and per-serving
+        // line below -- all three use the same 'p'/'f'/'c' shorthand on this one screen.
+        '<div class="sub" style="opacity:.65;padding:2px 0 6px">p = protein, f = fat, c = carbs, in grams</div>' +
+        rows +
         '<div class="mealhead">Whole batch</div>' +
         '<div class="row"><span>' + ingredients.length + ' ingredients</span><span>' +
         Math.round(total.kcal) + ' kcal · ' + Math.round(total.protein) + 'p ' +
@@ -4337,6 +4758,25 @@ const bkBox = document.getElementById('bkBox');
       showAdvice();
       statusEl.textContent = 'Targets updated to ' + targets.kcal + ' kcal';
     });
+
+    // --- N-1: credit workout calories toggle (2026-09-14 QoL audit, Owen approved) -----------
+    // Just the on/off switch and its own persistence -- the actual estimate
+    // (caloriesBurnedToday/caloriesBurnedForWorkout) lives further down, next to
+    // currentBodyweight(), since it needs `workouts` which isn't declared yet at this point in
+    // the file (same reasoning as the routines/workouts comment two lines below this block).
+    const creditWorkoutToggle = document.getElementById('creditWorkoutToggle');
+    function creditWorkoutCalOn() { return loadJSON('creditWorkoutCal', true); }
+    function renderCreditWorkoutToggle() {
+      creditWorkoutToggle.textContent = creditWorkoutCalOn() ? 'On — tap to turn off' : 'Off — tap to turn on';
+    }
+    creditWorkoutToggle.addEventListener('click', function () {
+      store('creditWorkoutCal', !creditWorkoutCalOn());
+      renderCreditWorkoutToggle();
+      // Reflect the change immediately on the Eating side rather than waiting for the next
+      // food/workout action -- flipping this toggle IS the action that should update the budget.
+      showToday();
+    });
+    renderCreditWorkoutToggle();
 
     // --- Workout tracking ---
     // routines: [{name, exercises:[{name, sets, reps}]}] — a template you build once.
@@ -4913,6 +5353,75 @@ const bkBox = document.getElementById('bkBox');
     }
 
     function saveRoutines() { return store('routines', routines); }
+
+    // --- Owen's program, ARC edition (Outputs/Workout, updated 13 Sep) ----------------------
+    // Names are the library's exact names so history, rankings and the body map line up.
+    // `dumbbell: true` = he logs the weight of ONE dumbbell and the app doubles it for volume/1RM.
+    // Stairmaster is not here: the app logs sets and reps, not minutes.
+    function ex(name, sets, reps, repsMax, dumbbell) {
+      const e = { name: name, sets: sets, reps: reps };
+      if (repsMax) e.repsMax = repsMax;
+      if (dumbbell) e.dumbbell = true;
+      return e;
+    }
+    const PPL_PROGRAM = [
+      { name: 'Push', exercises: [
+        ex('Incline Dumbbell Press', 3, 6, 10, true),
+        ex('Flat Barbell Bench Press', 3, 6, 10),
+        ex('Dips', 3, 8, 12),
+        ex('Seated Dumbbell Shoulder Press', 3, 6, 10, true),
+        ex('Lateral Raise', 4, 12, 20, true),
+        ex('Overhead Cable Triceps Extension', 3, 8, 12),
+        ex('Triceps Pushdown', 3, 10, 15)
+      ] },
+      { name: 'Pull', exercises: [
+        ex('MTS High Row', 3, 6, 10),
+        ex('Lat Pulldown', 3, 6, 10),
+        ex('Iso-Lateral Low Row', 3, 8, 12),
+        ex('One-Arm Cable Pullover', 3, 10, 15),
+        ex('Machine Reverse Fly', 3, 12, 20),
+        ex('Dumbbell Shrug', 3, 10, 15, true),
+        ex('Hammer Curl', 3, 8, 12, true),
+        ex('Incline Dumbbell Curl', 3, 8, 12, true),
+        ex('Reverse Dumbbell Wrist Curl', 3, 12, 20, true)
+      ] },
+      { name: 'Legs', exercises: [
+        ex('Barbell Back Squat', 3, 6, 10),
+        ex('Leg Press', 3, 8, 12),
+        ex('Romanian Deadlift', 3, 6, 10),
+        ex('Leg Extension', 3, 10, 15),
+        ex('Seated Leg Curl', 3, 10, 15),
+        ex('Leg Press Calf Raise', 4, 8, 12),
+        ex('Captain\u2019s Chair Leg Raise', 3, 8, 15),
+        ex('Cable Wood Chopper', 3, 12, 15)
+      ] }
+    ];
+    let pplArmed = false, pplArmTimer = null;
+    document.getElementById('loadPPL').addEventListener('click', function () {
+      const note = document.getElementById('loadPPLNote');
+      const clash = PPL_PROGRAM.filter(function (r) { return routines.some(function (x) { return x.name === r.name; }); }).map(function (r) { return r.name; });
+      if (!pplArmed) {
+        pplArmed = true;
+        clearTimeout(pplArmTimer);
+        pplArmTimer = setTimeout(function () { pplArmed = false; note.textContent = ''; }, 15000);
+        note.textContent = 'Tap again to add Push (7 exercises), Pull (9) and Legs (8).' +
+          (clash.length ? ' This REPLACES your existing ' + clash.join(', ') + ' routine' + (clash.length > 1 ? 's' : '') + '; logged workouts are kept.' : '');
+        return;
+      }
+      pplArmed = false; clearTimeout(pplArmTimer);
+      const previous = routines;
+      // Replace by name so a routine he has since edited by hand is not duplicated. Each routine
+      // is a fresh copy, so editing one in the app never changes the built-in program.
+      routines = routines.filter(function (x) { return !PPL_PROGRAM.some(function (r) { return r.name === x.name; }); })
+        .concat(PPL_PROGRAM.map(function (r) { return JSON.parse(JSON.stringify(r)); }));
+      if (!saveRoutines()) { routines = previous; return; }
+      showRoutineList();
+      populateRoutinePick();
+      refreshExerciseDatalist();
+      note.textContent = '';
+      statusEl.textContent = 'Loaded Push, Pull and Legs. Pick one under Log to start.';
+      showUndo('Loaded the PPL program', function () { routines = previous; saveRoutines(); showRoutineList(); populateRoutinePick(); });
+    });
     function saveWorkouts() { return store('workouts', workouts); }
 
     // Epley's formula — the same one Strength Level and most lifting apps use to turn a
@@ -4937,6 +5446,65 @@ const bkBox = document.getElementById('bkBox');
 
     function currentBodyweight() {
       return weights.length ? weights[weights.length - 1].lbs : null;
+    }
+
+    // --- N-1: credit workout calories back onto today's eating budget --------------------
+    // (2026-09-14 QoL audit, Owen approved.) MET-based estimate, the standard approach for
+    // exactly this: calories burned = MET x weight(kg) x duration(hours). Resistance training
+    // sits roughly 3.5-6 METs depending on intensity/rest between sets (the Compendium of
+    // Physical Activity's own range for weight lifting) -- this app has no per-exercise MET
+    // data and manufacturing one would be fake precision, so one reasonable constant (5.0, the
+    // upper-middle of that range) stands in for "resistance training" generally, the same way
+    // the app already uses one Epley formula for every lift's estimated 1RM rather than a
+    // per-exercise curve.
+    //
+    // A single workout's estimate. Needs BOTH a real duration (from the pinned workout timer --
+    // see startedAt/durationSec at Finish workout) and a real bodyweight (Weight tab weigh-ins).
+    // Missing either means there's nothing defensible to estimate, so this workout contributes 0
+    // rather than guessing: an untimed session (started before 2026-08-30, or one that ran past
+    // the 6-hour sanity cap and had its timing fields stripped) or a bodyweight never logged both
+    // fall here.
+    //
+    // Deliberately self-contained -- reads bodyweight straight from storage (loadJSON('weights',
+    // ...)) rather than the shared `weights` variable, and uses its own local MET/kg constants
+    // rather than the display-only LB_PER_KG declared next to the kg/lb toggle (~line 4743, same
+    // value, 2.2046226218 lb/kg) -- rather than calling currentBodyweight(). Both of those shared
+    // names are declared much further down this file, after showToday()'s own first call at page
+    // load (~line 1424), which needs today's credit to compute the budget note. An earlier
+    // version of this function read the shared names and either threw (LB_PER_KG) or silently
+    // fell back to 0 (`weights`, caught by a try/catch) on that very first call -- the exact
+    // temporal-dead-zone trap the reminder nudge hit the same day this was built. Caught by
+    // testing this with an automated page load, where nothing else happens to trigger a second
+    // render -- unlike a real browser tab, which fires a `focus` event shortly after opening
+    // that happens to repaint it correctly, masking the bug in ordinary manual testing. Being
+    // fully self-contained sidesteps the ordering question entirely: every value this function
+    // needs is available from the first line of the script, so the very first paint is right,
+    // not just eventually right.
+    function caloriesBurnedForWorkout(w) {
+      if (!w || !w.durationSec) return 0;
+      const ws = loadJSON('weights', []);
+      const bw = ws.length ? ws[ws.length - 1].lbs : null;
+      if (!bw) return 0;
+      const RESISTANCE_MET = 5.0;
+      const LB_PER_KG_LOCAL = 2.2046226218;
+      const kg = bw / LB_PER_KG_LOCAL;
+      const hours = w.durationSec / 3600;
+      return Math.round(RESISTANCE_MET * kg * hours);
+    }
+
+    // creditWorkoutCalOn() is declared once already, up by the Settings toggle (~line 4716) --
+    // not redeclared here, same function either way.
+
+    // Sums every workout logged today (workouts are always dated the day they were finished --
+    // Finish workout writes `date: todayKey()` -- so "today" here can never mean a backdated
+    // session). Same reasoning as caloriesBurnedForWorkout() above: reads `workouts` straight
+    // from storage rather than the shared in-memory array, so this is correct on the very first
+    // render, not just every render after the first.
+    function caloriesBurnedToday() {
+      if (!creditWorkoutCalOn()) return 0;
+      const key = todayKey();
+      return loadJSON('workouts', []).filter(function (w) { return w.date === key; })
+        .reduce(function (sum, w) { return sum + caloriesBurnedForWorkout(w); }, 0);
     }
 
     // Bodyweight-ratio tiers for the lifts that actually have published strength standards behind
@@ -5058,9 +5626,28 @@ const bkBox = document.getElementById('bkBox');
     // so this looks it up by name across every routine rather than needing it copied onto each
     // logged workout. If the same exercise name shows up flagged in any routine, treat it as
     // a dumbbell exercise everywhere — matches how standardFor()/goals already key off name.
+    //
+    // Fixed 2026-09-16 (N-6 crash): this used to read the shared module-level `routines` array,
+    // declared with `let routines = loadJSON('routines', [])` thousands of lines further down
+    // this file (~line 4790). N-6's daily-overview card (renderDailyOverview(), ~line 3576) wired
+    // a NEW call chain into page load -- showToday() -> renderDailyOverview() -> workoutVolume()
+    // -> wasDumbbell() -> here -- that runs from showToday()'s own call site (~line 1441), well
+    // before that declaration. On real data (a workout already logged today) that's a temporal-
+    // dead-zone reference: "Cannot access 'routines' before initialization", thrown early enough
+    // in the script that every addEventListener() written after it silently never registers.
+    // Exact same shape as the bug caloriesBurnedForWorkout() (below, ~line 5483) was already fixed
+    // for the same day, and the fix is the same established pattern: read straight from
+    // loadJSON('routines', []) instead of closing over the shared name. Safe to do here because
+    // every place `routines` is mutated (routineEditor save, delete/undo, the PPL loader) calls
+    // saveRoutines() -- i.e. store('routines', routines) -- in the same breath, so storage is
+    // never behind the in-memory array; this function is just no longer required to wait for that
+    // array to exist yet. Moving the `routines` declaration earlier instead was deliberately not
+    // done -- this file has hit this same ordering trap at least four times in one week, each time
+    // because moving one declaration up risked a cascade with whatever IT depends on.
     function isDumbbellExercise(name) {
-      for (let i = 0; i < routines.length; i++) {
-        const ex = routines[i].exercises.find(function (e) { return e.name.toLowerCase() === name.toLowerCase(); });
+      const rs = loadJSON('routines', []);
+      for (let i = 0; i < rs.length; i++) {
+        const ex = rs[i].exercises.find(function (e) { return e.name.toLowerCase() === name.toLowerCase(); });
         if (ex && ex.dumbbell) return true;
       }
       return false;
@@ -5352,7 +5939,7 @@ const bkBox = document.getElementById('bkBox');
         (rest ? ' data-rest="' + rest + '"' : '') + (adhoc ? ' data-adhoc="1"' : '') + '>' +
         '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">' +
         '<b>' + esc(ex.name) + '</b>' +
-        '<button class="exInfo grey" type="button" style="flex:0 0 auto;padding:9px 12px;min-height:36px;font-size:12px">History</button></div>' +
+        '<button class="exInfo grey" type="button" style="flex:0 0 auto;padding:9px 12px;min-height:44px;font-size:12px">History</button></div>' +
         '<div class="sub">Last time: ' + lastText + '</div>' +
         (adhoc ? '<div class="sub">Added today \u2014 not saved to the routine.</div>'
                : '<div class="sub">Target: ' + ex.sets + ' x ' + repsLabel + '</div>') +
@@ -5391,6 +5978,65 @@ const bkBox = document.getElementById('bkBox');
         }
       }
       return html;
+    }
+
+    // ------------------------------------------------------------------
+    // Restoring a typed-but-unsaved workout after a real reload (2026-09-16 fix)
+    //
+    // Before this, the ONLY thing persisted while a workout was in progress was
+    // activeWorkout ({routineName, startedAt}) -- that powers the pinned resume
+    // bar and its clock. Every set actually typed lived only in wExerciseLog's
+    // DOM until Finish workout ran saveWorkouts(). iOS can throw the tab away
+    // while it's backgrounded, and confirmed for real 2026-09-16: a full
+    // workout logged, Finish never tapped, the page came back with an empty
+    // log and just the routine name + running clock. `workoutDraft` (saved by
+    // scheduleDraftSave, below the activeWorkout functions) is what survives
+    // now; these two functions turn it back into real set rows.
+    //
+    // Both reuse setRowHtml for markup instead of re-deriving row HTML, so a
+    // restored row can never drift from what a normal "+ Set" tap builds.
+    function applyDraftRowsToCard(card, saved) {
+      const rowsEl = card.querySelector('.setRows');
+      if (!rowsEl) return;
+      const sets = (saved.sets && saved.sets.length) ? saved.sets : [{ kind: 'normal' }];
+      rowsEl.innerHTML = sets.map(function (s) { return setRowHtml(s.kind); }).join('');
+      const rows = rowsEl.querySelectorAll('.setRow');
+      sets.forEach(function (s, i) {
+        const row = rows[i];
+        if (!row) return;
+        // Raw strings, exactly as they were on screen -- deliberately NOT run through
+        // fromInputWeight/fmtWeightBare. Those convert between the stored unit (lb) and
+        // whichever one is DISPLAYED; the draft already holds what was typed in whatever
+        // unit was showing at the time, so re-converting it would risk silently changing
+        // the number instead of restoring it.
+        row.querySelector('.setWeight').value = s.weight || '';
+        row.querySelector('.setReps').value = s.reps || '';
+        const noteEl = row.querySelector('.setNote');
+        noteEl.value = s.note || '';
+        noteEl.style.display = s.note ? 'block' : 'none';
+      });
+    }
+
+    // Rebuilds the whole log from a saved draft: routine exercises already on screen (built
+    // fresh off the routine template by the caller) get their typed rows put back via
+    // applyDraftRowsToCard; anything left over in the draft afterward was added mid-workout
+    // with "+ Add an exercise" (adhoc) and isn't part of the routine at all, so it's appended
+    // the same way that button would append it.
+    function restoreDraftIntoLog(draft) {
+      const byName = {};
+      (draft.exercises || []).forEach(function (e) { byName[e.name] = e; });
+      wExerciseLog.querySelectorAll('.wExCard').forEach(function (card) {
+        const saved = byName[card.dataset.name];
+        if (!saved) return;
+        applyDraftRowsToCard(card, saved);
+        delete byName[card.dataset.name];
+      });
+      Object.keys(byName).forEach(function (name) {
+        const saved = byName[name];
+        wExerciseLog.insertAdjacentHTML('beforeend',
+          logCardHtml({ name: name, sets: Math.max(1, (saved.sets || []).length), reps: 8 }, true));
+        applyDraftRowsToCard(wExerciseLog.lastElementChild, saved);
+      });
     }
 
     // ------------------------------------------------------------------
@@ -5452,17 +6098,31 @@ const bkBox = document.getElementById('bkBox');
         return;
       }
       const routine = routines[Number(wRoutinePick.value)];
+      // Same session resuming after a real reload (activeWorkout survived in localStorage,
+      // still today, still this routine, and a matching draft exists): rebuild the typed sets
+      // from the autosaved draft instead of the routine's bare, empty template. This is the
+      // actual fix for the 2026-09-16 data-loss bug -- see restoreDraftIntoLog above for why a
+      // reload used to wipe everything typed even though activeWorkout itself survived.
+      const draft = loadJSON('workoutDraft', null);
+      const resuming = !!activeWorkout && !activeWorkoutIsStale() &&
+        activeWorkout.routineName === routine.name &&
+        !!draft && draft.routineName === routine.name;
       wExerciseLog.innerHTML = logCardsHtml(routine.exercises);
+      if (resuming) restoreDraftIntoLog(draft);
       wFinish.style.display = 'block';
       wAddExercise.style.display = 'block';
       wNoteCard.style.display = 'block';
-      wNote.value = '';
+      wNote.value = resuming ? (draft.note || '') : '';
       document.getElementById('restControls').style.display = 'block';
       // activeWorkoutIsStale() is the second half of the test on purpose. Without it, picking
       // "Push day" today when yesterday's abandoned "Push day" clock was still saved looked
       // like the same session continuing, so startWorkoutTimer never ran and yesterday's
       // startedAt went straight into today's record as a 24-hour workout.
       if (!activeWorkout || activeWorkoutIsStale() || activeWorkout.routineName !== routine.name) startWorkoutTimer(routine.name);
+      // Snapshot right away, whether resuming or freshly picked: a genuinely new pick starts a
+      // clean draft tagged with the new routine's name, so a stale draft from a different
+      // routine (or the just-restored one, unchanged) can never be mistaken for later state.
+      saveWorkoutDraftNow();
     });
 
     // Add something to today only - a machine was taken, or you felt like an extra set of
@@ -5472,6 +6132,7 @@ const bkBox = document.getElementById('bkBox');
       if (!name) return;
       wExerciseLog.insertAdjacentHTML('beforeend', logCardHtml({ name: name, sets: 1, reps: 8 }, true));
       statusEl.textContent = 'Added ' + name + ' to today';
+      saveWorkoutDraftNow();
     });
 
     wExerciseLog.addEventListener('click', function (ev) {
@@ -5479,9 +6140,10 @@ const bkBox = document.getElementById('bkBox');
       if (t.classList.contains('addSetBtn') || t.classList.contains('addDropBtn') || t.classList.contains('addWarmBtn')) {
         const kind = t.classList.contains('addDropBtn') ? 'drop' : t.classList.contains('addWarmBtn') ? 'warmup' : 'normal';
         t.closest('.wExCard').querySelector('.setRows').insertAdjacentHTML('beforeend', setRowHtml(kind));
+        saveWorkoutDraftNow();
         return;
       }
-      if (t.classList.contains('delSet')) { t.closest('.setRow').remove(); return; }
+      if (t.classList.contains('delSet')) { t.closest('.setRow').remove(); saveWorkoutDraftNow(); return; }
       // The note box starts hidden so the row stays narrow on a phone; the pencil reveals it
       // and focuses it, and it stays visible once it has something in it.
       if (t.classList.contains('noteSet')) {
@@ -5533,6 +6195,17 @@ const bkBox = document.getElementById('bkBox');
         }
       }
     });
+
+    // Autosave every set as it's typed (2026-09-16 fix, debounced in scheduleDraftSave below).
+    // Delegated on the container, same as the click/keydown listeners above, so it still covers
+    // rows added after the fact (an extra set, a drop set, a warm-up).
+    wExerciseLog.addEventListener('input', function (ev) {
+      const t = ev.target;
+      if (t.classList.contains('setWeight') || t.classList.contains('setReps') || t.classList.contains('setNote')) {
+        scheduleDraftSave();
+      }
+    });
+    wNote.addEventListener('input', scheduleDraftSave);
 
     wFinish.addEventListener('click', function () {
       const exercises = [];
@@ -5658,7 +6331,7 @@ const bkBox = document.getElementById('bkBox');
       wNoteCard.style.display = 'none';
       document.getElementById('restControls').style.display = 'none';
       endWorkoutTimer();
-      statusEl.textContent = 'Workout saved — ' + exercises.length + ' exercises logged' +
+      statusEl.textContent = 'Workout saved — ' + exercises.length + ' exercise' + (exercises.length === 1 ? '' : 's') + ' logged' +
         (prCount ? ' · ' + prCount + ' new PR' + (prCount === 1 ? '' : 's') + '!' : '');
       showRanks();
     });
@@ -5697,6 +6370,9 @@ const bkBox = document.getElementById('bkBox');
     if (activeWorkoutIsStale()) {
       activeWorkout = null;
       try { localStorage.removeItem('activeWorkout'); } catch (e) { /* nothing to undo */ }
+      // The draft belongs to that same abandoned session -- drop it too, or a routine picked
+      // fresh today could later be mistaken for "resuming" yesterday's leftover sets.
+      try { localStorage.removeItem('workoutDraft'); } catch (e) { /* nothing to undo */ }
     }
 
     // Same return-the-answer rule as the other save wrappers, for consistency. Nothing checks
@@ -5711,6 +6387,50 @@ const bkBox = document.getElementById('bkBox');
       if (restEndsAt) return store('restEndsAt', String(restEndsAt));
       localStorage.removeItem('restEndsAt');
       return true;
+    }
+
+    // ------------------------------------------------------------------
+    // workoutDraft: the actual fix for the 2026-09-16 data-loss bug.
+    //
+    // activeWorkout (above) only ever held {routineName, startedAt} -- enough to run the
+    // pinned resume bar's clock, nowhere near enough to rebuild a logged set. Everything
+    // actually typed lived only in wExerciseLog's DOM until Finish workout wrote it out via
+    // saveWorkouts(). This snapshots those DOM rows into plain data on every real change
+    // (typing, debounced; adding/removing a set or exercise, immediately) and restoreDraftIntoLog
+    // (above, next to logCardsHtml) turns it back into real rows when a reload resumes the
+    // same routine on the same day. It rides alongside activeWorkout on purpose -- same
+    // lifecycle, cleared together in endWorkoutTimer() and the stale-session check above -- but
+    // is its own key so a workout that was never actually typed into (activeWorkout alone,
+    // picker just opened) never writes a pointless empty draft record.
+    function snapshotWorkoutDraft() {
+      const exercises = [];
+      wExerciseLog.querySelectorAll('.wExCard').forEach(function (card) {
+        const sets = [];
+        card.querySelectorAll('.setRow').forEach(function (row) {
+          sets.push({
+            kind: row.dataset.kind || 'normal',
+            weight: row.querySelector('.setWeight').value,
+            reps: row.querySelector('.setReps').value,
+            note: row.querySelector('.setNote').value
+          });
+        });
+        exercises.push({ name: card.dataset.name, adhoc: card.dataset.adhoc === '1', sets: sets });
+      });
+      return { routineName: activeWorkout ? activeWorkout.routineName : null, note: wNote.value, exercises: exercises };
+    }
+    // Debounced so a keystroke in a weight box doesn't hit localStorage on every character --
+    // 400ms is short enough that a real background/reload still catches the last few characters
+    // typed. Structural changes (a set added or removed, a whole exercise added) save immediately
+    // instead of through this, since those are infrequent clicks, not a typing stream.
+    let draftSaveTimer = null;
+    function saveWorkoutDraftNow() {
+      clearTimeout(draftSaveTimer);
+      if (!activeWorkout) { localStorage.removeItem('workoutDraft'); return true; }
+      return store('workoutDraft', snapshotWorkoutDraft());
+    }
+    function scheduleDraftSave() {
+      clearTimeout(draftSaveTimer);
+      draftSaveTimer = setTimeout(saveWorkoutDraftNow, 400);
     }
 
     function formatClock(totalSeconds) {
@@ -5782,6 +6502,10 @@ const bkBox = document.getElementById('bkBox');
       restEndsAt = null;
       saveActiveWorkout();
       saveRestEndsAt();
+      // The draft only ever means anything alongside activeWorkout -- clear it here too so a
+      // finished (or abandoned, via blanking the picker) session can't resurface later.
+      clearTimeout(draftSaveTimer);
+      localStorage.removeItem('workoutDraft');
       renderActiveBar();
     }
 
@@ -5791,8 +6515,11 @@ const bkBox = document.getElementById('bkBox');
       // If iOS reloaded the tab from scratch while it was backgrounded, the routine picker
       // won't remember what was selected even though activeWorkout survived in localStorage —
       // re-select it so tapping the bar actually gets you back into logging, not a blank picker.
-      // Note this can't recover any set weights/reps you'd already typed but not saved; only
-      // the routine choice and the running clock survive a real reload.
+      // FIXED 2026-09-16: dispatching 'change' below used to rebuild wExerciseLog off the bare
+      // routine template, throwing away every set already typed -- confirmed for real that day
+      // (a full workout logged, Finish never tapped, sets gone on return; only the routine name
+      // and clock survived). The 'change' handler now restores from the autosaved workoutDraft
+      // when one matches this activeWorkout, so a real reload recovers the typed sets too.
       // Only rebuild the cards when there are none. The picker loses its
       // selection whenever a routine is added or deleted mid-session (it is
       // restored by array index, and a stale index resolves to no selection),
@@ -5873,6 +6600,14 @@ const bkBox = document.getElementById('bkBox');
     // the chain. Walking the sorted list of unique workout dates once gives both the length of
     // every chain and, in the same pass, the longest one ever (bestStreak).
     const wSexNote = document.getElementById('wSexNote');
+    // L-3: wSexNote's own content is rebuilt on every showRanks() call, so the link inside it
+    // is a fresh element each time — a delegated listener on the stable container catches it
+    // regardless, rather than needing to be re-attached after every re-render.
+    wSexNote.addEventListener('click', function (ev) {
+      if (ev.target.id !== 'wSexNoteLink') return;
+      ev.preventDefault();
+      openSettingsSection('secTargets');
+    });
     const wRankList = document.getElementById('wRankList');
     const streakHeadline = document.getElementById('streakHeadline');
     const streakSub = document.getElementById('streakSub');
@@ -5945,6 +6680,10 @@ const bkBox = document.getElementById('bkBox');
         ? 'Tap a highlighted day to see exactly what you did.'
         : 'Days you train get highlighted here once you log your first workout.';
       showRecentWorkouts();
+      document.getElementById('fitnessBadges').innerHTML = fitnessBadgesHTML();
+      updateHeroSummary();
+      renderDailyOverview(); // N-6
+      maybeShowReminderNudge();
     }
 
     streakCal.addEventListener('click', function (ev) {
@@ -6053,8 +6792,8 @@ const bkBox = document.getElementById('bkBox');
         '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">' +
         '<b>' + esc(w.routine || 'Workout') + '</b>' +
         '<span style="flex:0 0 auto">' +
-        '<button class="wdEdit grey" data-idx="' + idx + '" type="button" style="padding:9px 12px;min-height:36px;font-size:12px">Edit</button> ' +
-        '<button class="wdDel grey" data-idx="' + idx + '" type="button" style="padding:9px 12px;min-height:36px;font-size:12px">Delete</button></span></div>' +
+        '<button class="wdEdit grey" data-idx="' + idx + '" type="button" style="padding:9px 12px;min-height:44px;font-size:12px">Edit</button> ' +
+        '<button class="wdDel grey" data-idx="' + idx + '" type="button" style="padding:9px 12px;min-height:44px;font-size:12px">Delete</button></span></div>' +
         '<div class="sub" style="padding-bottom:2px">' + workoutTimeLine(w) + '</div>' +
         '<div class="sub">' + w.exercises.length + ' exercise' + (w.exercises.length === 1 ? '' : 's') +
         ' \u00b7 ' + v.sets + ' set' + (v.sets === 1 ? '' : 's') + ' \u00b7 ' + fmtWeight(v.volume) + ' total volume' +
@@ -6584,29 +7323,31 @@ const bkBox = document.getElementById('bkBox');
         return;
       }
       card.style.display = 'block';
-      // The last bucket is the week TODAY falls in, and weeks run Monday to Sunday
-      // (weekStart uses (getDay()+6)%7). So Sunday is the last day INSIDE that bucket, not the
-      // day after it -- on a Sunday morning there is still a whole training day to come. The
-      // first attempt at this used `getDay() === 0`, which moved the wrong percentage from six
-      // days a week down to one instead of removing it. The current bucket is never finished
-      // while it is the current bucket, so it never gets a percentage. The eight-week bars
-      // underneath still show where the week is sitting, which is the honest version.
-      const weekComplete = false;
+      // L-5 (2026-09-14 QoL audit) -- fixed properly, not just left disabled. The 9/11 bug
+      // divided the CURRENT, still-in-progress week by a complete prior week and printed a false
+      // "chest -68%" on a Tuesday, because five-sevenths of that week simply hadn't happened
+      // yet. Gating the percentage to "only show it on a Sunday" (the first attempt, see the
+      // old version of this comment) fixed the false number but only worked one day out of
+      // seven, so this had been disabled outright ever since rather than trusted at all.
+      // The real fix needs no day-of-week check: the LAST bucket (index length-1, "this week")
+      // is ALWAYS potentially in progress, so it is simply never used in any percentage, full
+      // stop. The comparison instead always runs on the two buckets before it -- the last week
+      // that has FULLY elapsed, against the week before that -- and both of those are complete
+      // no matter what day today is, because neither one is "this week." That makes a real,
+      // honest week-over-week number available every day, not one, and it stops moving once
+      // "last week" is over. The current week's own bar still renders on the chart exactly as
+      // before (the eight-week strip below), it just never gets a comparison percentage of its
+      // own attached to it, ever.
       document.getElementById('volumeChart').innerHTML = muscles.map(function (m) {
         const vals = data.byMuscle[m];
-        const now = vals[vals.length - 1], prev = vals[vals.length - 2] || 0;
-        // Only compare once the week is actually over. The last bucket is the week IN PROGRESS,
-        // so dividing it by a complete week said "chest -68%" on a Tuesday when the only thing
-        // that had happened was that five days were left. A percentage reads as a verdict, and
-        // this one was wrong six days out of seven. Weeks here run Monday to Sunday (weekStart
-        // uses (getDay()+6)%7), so the current bucket is complete only on a Sunday. Every other
-        // day the label says "so far" and shows no percentage - the eight-week bars underneath
-        // still show where this week is sitting, which is the honest version of the same signal.
-        const delta = (weekComplete && prev > 0) ? Math.round((now - prev) / prev * 100) : null;
+        const soFar = vals[vals.length - 1];
+        const lastFullWeek = vals[vals.length - 2] || 0;
+        const weekBeforeThat = vals[vals.length - 3] || 0;
+        const delta = weekBeforeThat > 0 ? Math.round((lastFullWeek - weekBeforeThat) / weekBeforeThat * 100) : null;
         return '<div style="margin-top:10px">' +
-          '<div class="barlabel"><span>' + m + '</span><span>' + fmtWeight(now) +
-          (weekComplete ? ' this week' : ' this week so far') +
-          (delta === null ? '' : ' \u00b7 ' + (delta > 0 ? '+' : '') + delta + '%') + '</span></div>' +
+          '<div class="barlabel"><span>' + m + '</span><span>' + fmtWeight(soFar) + ' this week so far</span></div>' +
+          (delta === null ? '' : '<div class="sub" style="margin:0 0 4px">Last full week: ' + fmtWeight(lastFullWeek) +
+            ' (' + (delta > 0 ? '+' : '') + delta + '% vs the week before)</div>') +
           barsSVG(vals) + '</div>';
       }).join('');
     }
@@ -6622,7 +7363,7 @@ const bkBox = document.getElementById('bkBox');
       libFilters.innerHTML = ['all'].concat(MUSCLE_NAMES).map(function (m) {
         const on = (m === 'all') ? libMuscle === null : libMuscle === m;
         return '<button type="button" class="libFilter' + (on ? '' : ' grey') + '" data-muscle="' + m +
-          '" style="flex:0 0 auto;padding:9px 12px;font-size:12px;width:auto;min-height:36px">' + m + '</button>';
+          '" style="flex:0 0 auto;padding:9px 12px;font-size:12px;width:auto;min-height:44px">' + m + '</button>';
       }).join('');
     }
 
@@ -7009,7 +7750,10 @@ const bkBox = document.getElementById('bkBox');
       showVolumeChart();
       wSexNote.innerHTML = liftSex
         ? ('Using ' + (liftSex === 'm' ? 'male' : 'female') + ' standards for the lifts that have them. Change it under ⚙ → Work out your targets.')
-        : 'No standards set yet — pick your gender under <b>⚙ (next to Eating / Fitness) → Work out your targets</b> to turn on rankings.';
+        // L-3: was plain prose telling Owen to go find the gear himself. Now a real link that
+        // opens Settings and expands the targets section directly (openSettingsSection, wired
+        // near wSexNote's declaration above).
+        : 'No standards set yet — <a href="#" id="wSexNoteLink" style="color:var(--accent)">pick your gender and work out your targets</a> to turn on rankings.';
       const bw = currentBodyweight();
       // The card used to vanish entirely when something was missing, which read as "the body
       // map is broken" (Owen, 11 Sep — he had his details in the targets calculator but no
@@ -7030,7 +7774,18 @@ const bkBox = document.getElementById('bkBox');
         document.getElementById('bodyMap').innerHTML = '<div class="sub">Your bodyweight and standards are set — the map fills in from your first logged workout.</div>';
         return;
       }
-      document.getElementById('bodyMap').innerHTML = bodySvg(computeMuscleScores(bw));
+      // L-1 (2026-09-14 QoL audit): computeMuscleScores() only scores exercises that have a
+      // published strength-standard table (see standardFor() above) -- a workout built entirely
+      // from dumbbell/accessory lifts can come back with an empty scores object even though real
+      // workouts were logged. Before this, the map just rendered fully grey with nothing on the
+      // screen explaining why, which read as broken (confirmed live, 2026-09-14 audit). The
+      // per-exercise rank list a bit further down already explains this correctly per lift
+      // ("No published standard for this exercise — ratio only") -- this note says the same
+      // thing at the map itself, which is where a confused user is actually looking.
+      const muscleScores = computeMuscleScores(bw);
+      document.getElementById('bodyMap').innerHTML = bodySvg(muscleScores) +
+        (Object.keys(muscleScores).length ? '' :
+          '<div class="sub" style="margin-top:8px">None of the exercises you\'ve logged have a published strength standard yet, so nothing\'s colored in here. Log a compound lift (bench, squat, deadlift, overhead press) to see this fill in.</div>');
       const scores = [];
       let rows = '';
       const filterNote = muscleFilter
@@ -7090,6 +7845,97 @@ const bkBox = document.getElementById('bkBox');
         showRanks();
       }
     });
+
+    // --- Reminders: the nudge banner + the actual firing check (N-5, 2026-09-14 QoL audit) ---
+    // Placed here, after `workouts` (a `let`, declared above) and computeStreak()/showStreak()
+    // exist, because both functions below read them. The Settings toggle UI itself lives earlier
+    // in the file, right after the Keys wiring -- it never needs `workouts` and renders safely
+    // on the very first paint; this half does, so it waits until it's safe.
+
+    // Shown once real engagement exists (2+ days logged in a row, either side) and hidden for
+    // good the moment either reminder is turned on or "Not now" is tapped. Called from the end
+    // of showToday() and showStreak(), which between them cover every place either streak can
+    // change -- including the VERY FIRST showToday() call at page load (line ~1378), which is
+    // why this looks its own elements up fresh with getElementById() each time rather than
+    // closing over a module-level const declared down here: a const at this point in the file
+    // is not initialized yet the first time showToday() runs, and closing over it would throw
+    // the same temporal-dead-zone error the `workouts` guard below is already written around.
+    function maybeShowReminderNudge() {
+      const nudgeEl = document.getElementById('reminderNudge');
+      const nudgeText = document.getElementById('reminderNudgeText');
+      if (!nudgeEl) return;
+      if (loadJSON('reminderNudgeDismissed', false) || reminderMealsOn() || reminderWorkoutOn()) {
+        nudgeEl.style.display = 'none';
+        return;
+      }
+      const foodStreak = computeFoodStreak().count;
+      // computeStreak() closes over `workouts`. Safe every time this runs in practice (click
+      // handlers, the interval below, focus/visibilitychange) -- except the very FIRST
+      // showToday() call at page load, which happens before `workouts`'s `let` line has run.
+      // Same temporal-dead-zone trap this file has been bitten by before; try/catch keeps that
+      // one early call from taking the rest of the script down with it.
+      let workoutStreak = 0;
+      try { workoutStreak = computeStreak().count; } catch (e) { /* too early in page load */ }
+      const best = Math.max(foodStreak, workoutStreak);
+      if (best < 2) { nudgeEl.style.display = 'none'; return; }
+      if (nudgeText) nudgeText.textContent = 'You\'ve logged ' + best + ' days in a row — want a daily reminder so you don\'t break the streak?';
+      nudgeEl.style.display = 'block';
+    }
+    document.getElementById('reminderNudgeYes').addEventListener('click', function () {
+      document.getElementById('reminderNudge').style.display = 'none';
+      openSettingsSection('secReminders');
+    });
+    document.getElementById('reminderNudgeNo').addEventListener('click', function () {
+      store('reminderNudgeDismissed', true);
+      document.getElementById('reminderNudge').style.display = 'none';
+    });
+
+    // Fires a real Notification when allowed -- works even while this app is only backgrounded
+    // (not fully closed) on this phone, same honest ceiling as notifyRestOver() above -- and
+    // always ALSO writes the status line, which is the one place guaranteed to be seen if the
+    // app happens to already be open and in the foreground when the time comes around. That
+    // second half is the in-app-banner fallback for when notifications were never allowed.
+    function fireReminder(statusText, notifTitle, notifBody) {
+      statusEl.textContent = statusText;
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try { new Notification(notifTitle, { body: notifBody }); } catch (e) { /* best effort */ }
+      }
+    }
+
+    // Checked once a minute, not every second like the workout clock above -- a reminder landing
+    // within a minute of the time picked is plenty. Also run on load, on focus and whenever the
+    // tab stops being hidden, so reopening the app after it was fully closed still catches an
+    // overdue reminder within a minute of opening, not just while it happens to already be open
+    // at the chosen time -- the honest fallback the brief asked for, not a promise of a true
+    // background wake-up.
+    function checkReminders() {
+      const now = new Date();
+      const hhmm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      const today = todayKey();
+      if (reminderMealsOn()) {
+        const fireAt = localStorage.getItem('reminderMealsTime') || '18:00';
+        const already = localStorage.getItem('reminderMealsFiredDate') === today;
+        const loggedToday = (log[today] || []).length > 0;
+        if (!already && !loggedToday && hhmm >= fireAt) {
+          fireReminder('Reminder: nothing logged today yet', 'Log a meal', 'Nothing logged today yet.');
+          try { localStorage.setItem('reminderMealsFiredDate', today); } catch (e) { /* best effort */ }
+        }
+      }
+      if (reminderWorkoutOn()) {
+        const fireAt = localStorage.getItem('reminderWorkoutTime') || '17:00';
+        const already = localStorage.getItem('reminderWorkoutFiredDate') === today;
+        const loggedToday = !!workoutDateSet()[today];
+        if (!already && !loggedToday && hhmm >= fireAt) {
+          fireReminder('Reminder: no workout logged today', 'Start a workout', 'No workout logged today yet.');
+          try { localStorage.setItem('reminderWorkoutFiredDate', today); } catch (e) { /* best effort */ }
+        }
+      }
+    }
+    setInterval(checkReminders, 60000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) checkReminders(); });
+    window.addEventListener('focus', checkReminders);
+    checkReminders();
+    maybeShowReminderNudge();
 
     // --- Goals UI ---
     const goalList = document.getElementById('goalList');
