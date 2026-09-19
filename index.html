@@ -61,7 +61,10 @@ button:disabled { opacity: 0.5; }
     body {
       font-family: -apple-system, sans-serif;
       margin: 0;
-      padding: 16px;
+      /* Bottom padding clears the fixed #tabs/#wtabs bar (roughly 64px tall) plus the iPhone
+         home-indicator safe area, so the last card in any view doesn't sit half-hidden
+         behind the bar. */
+      padding: 16px 16px calc(74px + env(safe-area-inset-bottom));
       background: var(--bg);
       color: var(--text);
     }
@@ -121,10 +124,19 @@ button:disabled { opacity: 0.5; }
     .fab { display: block; width: 100%; margin-top: 4px; font-size: 18px; }
     /* The Eating "+" floats at the thumb (Owen, 11 Sep) and its menu slides up as a sheet. The
        Fitness FABs keep the inline style above. */
-    #addBtn { position: fixed; right: 16px; bottom: 18px; width: 60px; height: 60px; padding: 0; margin: 0;
+    /* bottom offset clears the fixed #tabs/#wtabs bar (~64px incl. its own padding) plus the
+       same 18px gap it always had above the edge of the screen. */
+    #addBtn { position: fixed; right: 16px; bottom: calc(64px + env(safe-area-inset-bottom) + 18px); width: 60px; height: 60px; padding: 0; margin: 0;
       border-radius: 50%; z-index: 900; box-shadow: 0 6px 18px rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; }
     #addBtn svg { width: 34px; height: 34px; }
     #todayView { padding-bottom: 96px; }
+    /* 2026-09-19 full sweep: the floating "+" FAB is fixed to the bottom-right of the screen
+       regardless of how tall the page is, so any content that happens to render near there --
+       not just the very end of the scrollable view, which #todayView's own padding above
+       already covers -- can end up sitting behind it. Confirmed reproducible: the last couple of
+       food-search result rows had their kcal figures cut off by the FAB. Same fix, applied to
+       the one place it was actually seen. */
+    #foodSearchResults { padding-bottom: 96px; }
     #sheetBackdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 940; display: none; }
     .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 950; margin: 0; background: var(--card);
       border: 1px solid var(--border); border-bottom: none; border-radius: 18px 18px 0 0; padding: 14px 14px 26px;
@@ -270,36 +282,83 @@ button:disabled { opacity: 0.5; }
       align-items: center;
     }
     #hero canvas, #hero svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: block; }
-    #heroText { position: relative; z-index: 2; padding: 0 16px; }
+    #heroText {
+      position: relative; z-index: 2; padding: 0 16px; width: 100%;
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+    }
     #hero h1 { margin: 0; }
     /* V-3 / N-2: the live one-line summary under the title. Reads --accent like everything
        else the mode switcher recolors, so it goes cyan/violet with no extra JS. */
     #heroSummary { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: var(--accent); }
-    #modeTabs { display: flex; gap: 6px; margin-bottom: 14px; }
-    #modeTabs #settingsBtn { flex: none; width: 52px; font-size: 20px; padding: 0; }
+    /* Nav redesign (2026-09-18, matching the approved "Icon & Nav Directions" canvas Owen
+       reviewed and signed off on — https://claude.ai/artifact/Eyw1tDYsXSUFGqxmT9reU1 — a
+       first build here guessed at a different structure before that canvas was found; this
+       replaces it with the actual approved shape). Two pieces:
+       1. #modeTabs is now a small, compact Eating/Fitness segmented control that stays near
+          the title, not a full-width pill row -- text only, no icons, per the mockup.
+       2. #headerRow's settings button sits next to the title as a small square icon button,
+          not inside the mode switcher at all.
+       The old #tabs/#wtabs sub-tab rows (Today/History/Weight/Recipes and Routines/Log/
+       Progress/Goals/Library) become the real primary navigation, restyled as a bar fixed to
+       the bottom of the screen with icon+label buttons -- same buttons, same classes and
+       data-view/data-wview attributes as before, only where they sit and what they look like
+       changed, so the click-handler JS further down didn't need to change at all. Only one of
+       #tabs/#wtabs is ever visible at a time already (each lives inside its own
+       eatingSection/fitnessSection, which the mode switcher shows/hides as a whole), so both
+       can share the same fixed position without any extra JS to coordinate them. */
+    /* heroText now carries the settings button too, so it becomes the flex row instead of a
+       plain padded block -- title/summary on the left, the gear on the right. Both this and
+       #modeTabs below started at the mockup's literal pixel sizes (34px / ~29px tall) before
+       layout_audit.js caught them under the app's own 44px minimum tap-target floor (enforced
+       everywhere else -- see the #tabs comment) -- bumped to real 44px hit targets while
+       keeping the same compact visual proportions the mockup showed. */
+    #settingsBtn {
+      flex: none; width: 44px; height: 44px; min-height: 0; padding: 0; margin-top: -4px;
+      border-radius: 12px; background: var(--card); color: var(--text-dim);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #settingsBtn svg { width: 17px; height: 17px; pointer-events: none; }
+    #modeTabs {
+      display: flex; gap: 2px; background: var(--card); border-radius: 12px; padding: 3px;
+      margin-bottom: 14px;
+    }
+    #modeTabs button {
+      flex: 1; min-height: 44px; border-radius: 9px; padding: 7px 0; font-size: 13px;
+      font-weight: 600; background: none; color: var(--text-dim); border: none;
+    }
+    #modeTabs button.active { background: var(--accent); color: var(--on-accent); }
     .secHead { width: 100%; text-align: left; background: none; color: var(--text); font-weight: 700; font-size: 15px; padding: 10px 0; }
     .secHead::before { content: '▸ '; color: var(--accent); }
     .secHead.open::before { content: '▾ '; }
     /* L-2: a visible boundary around the whole Settings panel, so it reads as its own screen
-       stacked above the current tab rather than a mystery block of cards with no edges. */
-    #calcPanel { border: 1px solid var(--accent); border-radius: 12px; padding: 4px 12px 8px; margin-bottom: 14px; }
+       stacked above the current tab rather than a mystery block of cards with no edges.
+       2026-09-17 (UI audit): the border alone still read as a thin debug outline rather than a
+       real sheet - a proper position:fixed modal was considered and rejected here, since this
+       app already has one real overlay (the exercise detail card) and a second competing overlay
+       mechanism risks fighting it over scroll position and the iOS keyboard for no real gain.
+       A background tint carries the rest of the "separate surface" job the border was doing alone. */
+    #calcPanel { border: 1px solid var(--accent); border-radius: 12px; padding: 4px 12px 8px; margin-bottom: 14px; background: color-mix(in srgb, var(--accent) 6%, var(--card)); }
     #calcPanelHead { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 2px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
     #calcPanelHead b { font-size: 16px; }
     /* 44px minimum tap target, same rule the app applies everywhere else (see the #tabs
        comment above) — layout_audit.js checks this and caught it at the first size tried. */
     #calcPanelClose { flex: none; width: 44px; min-height: 44px; padding: 0; font-size: 18px; line-height: 1; }
-    #modeTabs button { flex: 1; background: var(--card); color: var(--text-dim); font-size: 15px; padding: 12px 2px; border: 1px solid var(--border); }
-    #modeTabs button.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-    /* Measured on a 375px phone on 2026-08-30: these buttons were 34px tall
-       and 6px apart. Apple's own guidance is 44px, and these are the controls
-       tapped most in the whole app. 44px tall, 8px apart -- five of them still
-       fit across 375px (5x63 + 4x8 = 347). */
-    #tabs, #wtabs { display: flex; gap: 8px; margin-bottom: 12px; }
-    #tabs button, #wtabs button { flex: 1; background: var(--secondary-bg); color: var(--text-dim); font-size: 14px; padding: 10px 2px; min-height: 44px; }
-    /* Five fitness sub-tabs instead of four: drop a point of type and let a long word shrink
-       rather than wrap the row onto two lines on a 375px phone. */
-    #wtabs button { font-size: 12.5px; padding: 10px 1px; min-width: 0; }
-    #tabs button.active, #wtabs button.active { background: var(--accent); color: var(--on-accent); }
+    /* #tabs/#wtabs are the app's real primary navigation now (see the note above #headerRow) --
+       fixed to the bottom of the screen, icon over label, same shape whichever one is showing.
+       Both share this position; only one is ever visible at once since each lives inside the
+       section the mode switcher shows/hides. */
+    #tabs, #wtabs {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 890;
+      display: flex; background: var(--card); border-top: 1px solid var(--border);
+      padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    }
+    #tabs button, #wtabs button {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; background: none; border: none; border-radius: 8px; min-width: 0;
+      color: var(--text-dim); font-size: 10.5px; font-weight: 600; padding: 5px 1px; min-height: 52px;
+    }
+    #tabs button svg, #wtabs button svg { width: 21px; height: 21px; pointer-events: none; }
+    #tabs button.active, #wtabs button.active { background: none; color: var(--accent); }
     .exRow input, .setRow input { font-size: 16px; padding: 9px; border: 1px solid var(--border); border-radius: 8px; min-width: 0; background: var(--card); color: var(--text); }
     .dropTag { flex: 0 0 auto; align-self: center; font-size: 12px; color: var(--text-dim); }
     .setRow.drop input { border-style: dashed; }
@@ -308,6 +367,29 @@ button:disabled { opacity: 0.5; }
     .steps { font-size: 14px; padding-left: 20px; margin: 6px 0; }
     .steps li { margin-bottom: 4px; }
     img { max-width: 100%; border-radius: 8px; margin-top: 12px; }
+    /* 2026-09-18: #preview (the raw camera photo, shown while the AI looks at it) had NO sizing
+       rule of its own beyond the generic img{} above -- max-width:100% but no height cap, so a
+       full-resolution portrait phone photo could render hundreds of pixels tall and dominate the
+       screen. object-fit:contain rather than cover: the whole photo matters here (it's "is this
+       the food you meant"), so nothing should get cropped off to fill a box. */
+    /* 2026-09-18 photo sweep, aesthetic finding: this was a bare <img> with none of the app's
+       own card language -- 8px corners (the generic img{} default) instead of the 12px every
+       .card uses, no background, no inset padding, so it read as a raw file preview that had
+       escaped its container rather than something the app framed on purpose. Styled to match
+       .card exactly (12px radius, var(--card) background, 14px padding -- padding works fine on
+       an <img> box in every real browser, same as it would on a div). box-sizing:border-box so
+       the padding comes out of max-height/width instead of adding to them. */
+    #preview {
+      display: block; box-sizing: border-box; max-height: 280px; width: 100%;
+      object-fit: contain; margin: 12px auto; background: var(--card); border-radius: 12px;
+      padding: 14px;
+    }
+    #preview:not([src]) { display: none; }
+    /* 2026-09-18 photo sweep: the auditor found these two never got the same height cap #preview
+       did -- both already sit inside a real .card (so they don't need #preview's background/
+       padding treatment above), but a tall portrait photo in either one had no max-height and
+       could still push the Save button far down the screen the same way #preview used to. */
+    #fPhotoPreview, #rFinalPreview { max-height: 280px; object-fit: contain; }
   </style>
 </head>
 <body>
@@ -334,12 +416,27 @@ button:disabled { opacity: 0.5; }
       <circle cx="505" cy="70" r="3"   fill="var(--accent)"/>
     </svg>
     <div id="heroText">
-      <h1 id="appTitle">Calorie Tracker</h1>
-      <!-- V-3 / N-2 (2026-09-14 QoL audit): filled in by updateHeroSummary() -- calories left
-           today in Eating mode, current training streak in Fitness mode. Empty until the first
-           render so there's no flash of wrong text before real data loads. -->
-      <p id="heroSummary"></p>
+      <div>
+        <h1 id="appTitle">Calorie Tracker</h1>
+        <!-- V-3 / N-2 (2026-09-14 QoL audit): filled in by updateHeroSummary() -- calories left
+             today in Eating mode, current training streak in Fitness mode. Empty until the first
+             render so there's no flash of wrong text before real data loads. -->
+        <p id="heroSummary"></p>
+      </div>
+      <!-- Settings, moved here 2026-09-18 nav redesign (see the note above #settingsBtn's CSS)
+           -- a small icon button next to the title, same id/click-handler as always. -->
+      <button id="settingsBtn" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.36a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.64 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.64 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.64a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.36 9c.16.38.52.63 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg>
+      </button>
     </div>
+  </div>
+
+  <!-- Compact Eating/Fitness switch (2026-09-18 nav redesign) -- text only, no icons, per the
+       approved mockup. Same classes/data-section as always; only the styling and position
+       (moved out of the old settings-sharing row) changed. -->
+  <div id="modeTabs">
+    <button class="mode active" data-section="eating">Eating</button>
+    <button class="mode" data-section="fitness">Fitness</button>
   </div>
 
   <!-- N-6 (2026-09-15 QoL audit, Low, Owen approved 15 Sep -- "build it, if I don't like it we
@@ -354,8 +451,13 @@ button:disabled { opacity: 0.5; }
        delete all of it and nothing else changes. -->
   <div id="dailyOverview" class="card">
     <div class="sub" style="margin-bottom:4px"><b>Today, at a glance</b></div>
-    <div class="row" style="border-top:none"><span>🍽 Eating</span><span id="dailyOverviewEating" style="color:var(--text-dim)"></span></div>
-    <div class="row"><span>🏋 Fitness</span><span id="dailyOverviewFitness" style="color:var(--text-dim)"></span></div>
+    <!-- 2026-09-18 nav redesign: these two labels were the app's last literal emoji (🍽/🏋),
+         flagged in the UI audit. Swapped for the same thin outline fork-and-knife / dumbbell
+         glyphs from the approved Icon & Nav Directions canvas, inline with the text the way
+         the emoji used to sit -- static markup, same reasoning as the addOption icons above:
+         this row never re-renders, so there's no need to route it through a JS constant. -->
+    <div class="row" style="border-top:none"><span style="white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M6 3v7a2 2 0 0 0 2 2v9M8 3v6M10 3v6M17 3c-2 2-2 5-2 7 0 1.2.8 2 2 2v9M17 3v18"/></svg>Eating</span><span id="dailyOverviewEating" style="color:var(--text-dim);text-align:right;margin-left:12px"></span></div>
+    <div class="row"><span style="white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M4 12h2M18 12h2M6 12v-2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-2M18 12v-2a1 1 0 0 0-1-1h-1a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2M9 12h6"/></svg>Fitness</span><span id="dailyOverviewFitness" style="color:var(--text-dim);text-align:right;margin-left:12px"></span></div>
   </div>
 
   <p id="status">Ready</p>
@@ -377,11 +479,6 @@ button:disabled { opacity: 0.5; }
     </div>
   </div>
 
-  <div id="modeTabs">
-    <button class="mode active" data-section="eating">Eating</button>
-    <button class="mode" data-section="fitness">Fitness</button>
-    <button id="settingsBtn" class="grey" aria-label="Settings" title="Settings">⚙</button>
-  </div>
   <!-- Settings live here, off the Weight tab (Owen, 11 Sep): backup and keys have nothing to do
        with weight. Three sections, each closed until tapped, so the panel is three lines long.
        L-2 (2026-09-14 QoL audit): confirmed live that opening this inserts the three cards
@@ -450,6 +547,7 @@ button:disabled { opacity: 0.5; }
              export -- one row per logged meal. -->
         <div class="btnStack">
           <button id="bkCsv" class="grey">Download food log as CSV</button>
+          <button id="bkWorkoutCsv" class="grey">Download workout history as CSV</button>
         </div>
         <textarea id="bkBox" rows="4" placeholder="Your backup text appears here. To restore, paste a backup in and tap Restore."></textarea>
         <button id="bkRestore" class="grey">Restore from the box above</button>
@@ -481,6 +579,7 @@ button:disabled { opacity: 0.5; }
         <div class="sub" style="margin:10px 0 2px"><b>Log meals</b></div>
         <button type="button" id="remMealsToggle" class="grey">Off — tap to turn on</button>
         <input type="time" id="remMealsTime" value="18:00" aria-label="Meal reminder time">
+        <div class="sub">This is the latest it'll fire. On Mon/Wed (ASME 7pm) and Thu (ISS Engine Testing 6pm) it moves an hour earlier on its own so it actually lands before you have to leave, not after.</div>
         <div class="sub" style="margin:10px 0 2px"><b>Work out</b></div>
         <button type="button" id="remWorkoutToggle" class="grey">Off — tap to turn on</button>
         <input type="time" id="remWorkoutTime" value="17:00" aria-label="Workout reminder time">
@@ -490,10 +589,10 @@ button:disabled { opacity: 0.5; }
 
   <div id="eatingSection">
   <div id="tabs">
-    <button class="tab active" data-view="todayView">Today</button>
-    <button class="tab" data-view="historyView">History</button>
-    <button class="tab" data-view="weightView">Weight</button>
-    <button class="tab" data-view="recipeView">Recipes</button>
+    <button class="tab active" data-view="todayView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>Today</button>
+    <button class="tab" data-view="historyView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5M12 7v5l3 3"/></svg>History</button>
+    <button class="tab" data-view="weightView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12l-1.5 6.5a4.5 4.5 0 0 1-9 0L6 4Z"/><path d="M9.5 20h5M12 15.5V20"/></svg>Weight</button>
+    <button class="tab" data-view="recipeView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v14"/><path d="M6 22a2 2 0 0 1-2-2.5A2 2 0 0 1 6 18h13"/></svg>Recipes</button>
   </div>
 
   <div id="todayView" class="view">
@@ -620,12 +719,22 @@ button:disabled { opacity: 0.5; }
         <div class="sub" id="drinkSource"></div>
       </div>
     </div>
+    <!-- 2026-09-19 full sweep: none of the five entry-method cards above (photo/barcode/search/
+         dine/type/describe) had their own way out -- the only way to close any of them was
+         re-tapping the same "+" that opened it, undocumented and found by accident in testing.
+         One shared button rather than five separate ones: class="entryMethod" means every
+         existing "hide all entry cards" reset already hides this too, with no changes needed at
+         those sites -- only showing it (alongside whichever card was opened) needed a new line. -->
+    <button type="button" class="grey entryMethod" id="entryCancel" style="display:none;margin-top:4px">Cancel</button>
     <div class="card" id="portion" style="display:none">
       <div id="portionName"></div>
       <input id="grams" type="number" min="0" placeholder="grams">
       <button id="usePortion">Use this amount</button>
     </div>
-    <div class="entryMethod" id="photoCard">
+    <!-- 2026-09-18 photo sweep: was missing the `card` class every sibling entry-method card has
+         (typeCard, descCard, bcCard, searchCard, dineCard), so it rendered as an unstyled flat
+         cyan block instead of matching them. -->
+    <div class="card entryMethod" id="photoCard">
       <label for="photo" class="photobtn">Take a photo</label>
       <input type="file" accept="image/*" capture="environment" id="photo">
     </div>
@@ -738,11 +847,11 @@ button:disabled { opacity: 0.5; }
 
   <div id="fitnessSection" style="display:none">
     <div id="wtabs">
-      <button class="wtab active" data-wview="wRoutinesSub">Routines</button>
-      <button class="wtab" data-wview="wLogSub">Log</button>
-      <button class="wtab" data-wview="wRanksSub">Progress</button>
-      <button class="wtab" data-wview="wGoalsSub">Goals</button>
-      <button class="wtab" data-wview="wLibrarySub">Library</button>
+      <button class="wtab active" data-wview="wRoutinesSub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1Z"/><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 11h6M9 15h6"/></svg>Routines</button>
+      <button class="wtab" data-wview="wLogSub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg>Log</button>
+      <button class="wtab" data-wview="wRanksSub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>Progress</button>
+      <button class="wtab" data-wview="wGoalsSub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>Goals</button>
+      <button class="wtab" data-wview="wLibrarySub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Library</button>
     </div>
 
     <!-- Shared autocomplete source for every place an exercise name gets typed. A native
@@ -1047,30 +1156,61 @@ undoBar.addEventListener('click', function (ev) {
 // slow lookup and well short of "is this thing broken".
 const FETCH_TIMEOUT_MS = 20000;
 
+// 2026-09-18: Owen hit this on his phone with both the photo and describe-it AI paths --
+// "wasn't able to reach the server and just gave up." True before this: any network-level
+// failure (a brief WiFi/cellular hiccup, a captive-portal blip, a DNS wobble) fell straight
+// through to the manual-fallback card on the FIRST failed attempt, no retry at all -- unlike
+// a busy Google server, which callGemini already retries up to 4 times with backoff. A short
+// connectivity blip is common on a phone (walking between WiFi and cellular, an elevator) and
+// usually clears in well under a second, so it deserves the same courtesy. Two short retries
+// here, not the long escalating delays used for "Google is busy": that wait communicates real
+// server overload, this one is for something that's very likely already fixed a second later.
+const NETWORK_RETRY_DELAYS_MS = [500, 1500];
+
 async function safeFetch(url, opts) {
   if (!navigator.onLine) {
     statusEl.textContent = 'No internet connection — try again once you are back online';
     return null;
   }
-  const controller = new AbortController();
-  const timer = setTimeout(function () { controller.abort(); }, FETCH_TIMEOUT_MS);
-  try {
-    return await fetch(url, Object.assign({}, opts, { signal: controller.signal }));
-  } catch (e) {
-    statusEl.textContent = (e && e.name === 'AbortError')
-      ? 'That took too long and was given up on — try again'
-      : 'Could not reach the server — check your connection and try again';
-    return null;
-  } finally {
-    clearTimeout(timer);
+  for (let attempt = 0; ; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(function () { controller.abort(); }, FETCH_TIMEOUT_MS);
+    try {
+      return await fetch(url, Object.assign({}, opts, { signal: controller.signal }));
+    } catch (e) {
+      if (attempt < NETWORK_RETRY_DELAYS_MS.length) {
+        statusEl.textContent = 'Connection hiccup — trying again...';
+        await new Promise(function (res) { setTimeout(res, NETWORK_RETRY_DELAYS_MS[attempt]); });
+        continue;
+      }
+      statusEl.textContent = (e && e.name === 'AbortError')
+        ? 'That took too long and was given up on — try again'
+        : 'Could not reach the server — check your connection and try again';
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
     const appTitle = document.getElementById('appTitle');
     let statusTimer;
+    // 2026-09-19 full sweep, found independently by two testers in two different areas
+    // (Settings and Eating): the status line always renders in the same spot near the top of the
+    // page, with nothing scrolling it into view. Settings in particular is a long inline-expanding
+    // panel, not a compact dialog, so most of the time spent inside it the confirmation/error was
+    // happening off-screen -- a tap on "Make a backup" (or a blocked action like the macro-
+    // mismatch warning) looked like it did nothing unless you happened to already be scrolled to
+    // the top. Only scrolls when the line is actually out of view, so this changes nothing for the
+    // common case where it's already visible -- no extra motion, just recovers the case where it
+    // silently wasn't.
     new MutationObserver(function () {
       statusEl.classList.remove('fade');
       clearTimeout(statusTimer);
       statusTimer = setTimeout(function () { statusEl.classList.add('fade'); }, 3000);
+      const r = statusEl.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > (window.innerHeight || document.documentElement.clientHeight)) {
+        statusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }).observe(statusEl, { childList: true, characterData: true, subtree: true });
     let pressTimer;
     function startPress() { pressTimer = setTimeout(function () { debugEl.classList.toggle('show'); }, 600); }
@@ -1118,20 +1258,29 @@ async function safeFetch(url, opts) {
     chainEnter(['fName', 'fKcal', 'fProtein', 'fFat', 'fCarbs'], function () { confirmSave.click(); });
 
     const DEFAULT_PHOTO_HINT = 'Required — so the app can recognise this food from a photo later.';
+    const OPTIONAL_PHOTO_HINT = 'Optional — without one the app cannot recognise this meal from a photo later, but you can add one any time from Saved meals.';
     // True only while saving a meal that was ALREADY logged (from Today or History). That is
     // the one route with no photo to inherit, because the food log stores numbers and not
     // pictures - keeping a copy of the photo on every logged entry would fill localStorage in
-    // a couple of weeks. So the photo gate in confirmSave is relaxed for this route alone.
+    // a couple of weeks. Controls one thing ONLY: whether saving re-offers the meal-time picker
+    // afterward (it must not, from this route -- offering it again logged the same food twice,
+    // 11 Sep sweep). Do not also use this for the photo gate below; see photoOptional for that.
     let savingFromLog = false;
+    // 2026-09-19 full sweep: "Type numbers myself" exists specifically for someone who wants to
+    // avoid the camera (no working one, bad lighting, nothing worth photographing) -- but it used
+    // to force a photo anyway, same as building a brand-new saved meal any other way, which
+    // defeated the entire point of offering it as a no-camera option. Kept separate from
+    // savingFromLog (above) on purpose: a manual entry is still brand-new, unlogged data, so it
+    // still needs the "now pick a meal" step after saving -- only the photo requirement relaxes.
+    let photoOptional = false;
 
-    // The single way into the editor. It exists because the editor is opened from four
+    // The single way into the editor. It exists because the editor is opened from several
     // different places, and the two things that vary by route - whether a photo is required,
     // and what the hint under "Photo" says - kept having to be remembered separately.
-    function openEditor(fromLog) {
+    function openEditor(fromLog, optionalPhoto) {
       savingFromLog = !!fromLog;
-      fPhotoHint.textContent = fromLog
-        ? 'Optional here — without one the app cannot recognise this meal from a photo later, but you can add one any time from Saved meals.'
-        : DEFAULT_PHOTO_HINT;
+      photoOptional = !!fromLog || !!optionalPhoto;
+      fPhotoHint.textContent = photoOptional ? OPTIONAL_PHOTO_HINT : DEFAULT_PHOTO_HINT;
       // The picture the entry flow put on screen and the one inside the editor are the SAME
       // photo. Showing both made the screen twice as long and looked like the app had
       // duplicated it. One image, always - the editor's, since that is the one being saved.
@@ -1303,31 +1452,25 @@ async function safeFetch(url, opts) {
     function chromeIcon(body) {
       return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' + body + '</svg>';
     }
-    // Trash. #e0637c in the source art is exactly the app's --danger, so it is bound to the
-    // variable here rather than left as a hex that could drift out of sync with the palette.
-    function trashBody(bin, edge) {
-      return '<rect x="40" y="14" width="20" height="8" rx="2" fill="' + edge + '"/>'
-        + '<rect x="22" y="24" width="56" height="8" rx="3" fill="' + bin + '"/>'
-        + '<path d="M 28 32 L 32 84 C 32 88 36 90 40 90 L 60 90 C 64 90 68 88 68 84 L 72 32 Z" fill="' + bin + '" stroke="' + edge + '" stroke-width="2"/>'
-        + '<g stroke="' + edge + '" stroke-width="3" stroke-linecap="round"><line x1="42" y1="42" x2="43" y2="78"/>'
-        + '<line x1="50" y1="42" x2="50" y2="78"/><line x1="58" y1="42" x2="57" y2="78"/></g>';
+    // 2026-09-18 nav redesign: trash/pencil/bookmark redrawn as plain 24x24 outline strokes,
+    // matching the approved Icon & Nav Directions canvas (the old versions were small detailed
+    // illustrations - a drawn bin with hinge/lid/ribs, a drawn pencil with a ferrule - which
+    // read fine on their own but didn't match the flatter, consistent line-icon language the
+    // canvas settled on for functional chrome). Each keeps its OLD fixed color rather than
+    // switching to currentColor: the previous versions baked var(--danger)/var(--accent)
+    // straight into the artwork regardless of which button they sat on (confirmed by checking
+    // every call site - .del/.delmeal/.delw/.delRt are all color:var(--danger) already, but
+    // .delSet/.delEx/.delGoal are plain .grey buttons with no color override, so a switch to
+    // currentColor would have quietly turned those three from red to gray). Keeping the fixed
+    // color preserves the exact same contrast everywhere these already appear.
+    function outlineIcon(body) {
+      return '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">' + body + '</svg>';
     }
-    const ICON_TRASH = chromeIcon(trashBody('var(--danger)', '#8a1f34'));
-    const ICON_TRASH_ON_ACCENT = chromeIcon(trashBody('var(--danger)', 'var(--on-accent)'));
-    // Edit pencil. Same three paths both times, different fills.
-    function pencilBody(shaft, ferrule, edge) {
-      return '<path d="M 24 76 L 62 38 L 74 50 L 36 88 L 20 92 Z" fill="' + shaft + '" stroke="' + edge + '" stroke-width="2.4" stroke-linejoin="round"/>'
-        + '<path d="M 62 38 L 72 28 C 76 24 82 24 86 28 C 90 32 90 38 86 42 L 76 52 Z" fill="' + ferrule + '" stroke="' + edge + '" stroke-width="2.4" stroke-linejoin="round"/>'
-        + '<path d="M 20 92 L 26 78 L 34 86 Z" fill="' + edge + '"/>';
-    }
-    const ICON_PENCIL = chromeIcon(pencilBody('var(--accent)', '#c7e9f0', '#06636e'));
-    // "Save this to my meals" - a bookmark ribbon with a plus in it. Outline rather than a
-    // filled shape so it sits at the same visual weight as the pencil beside it, and accent
+    const ICON_TRASH = outlineIcon('<path stroke="var(--danger)" d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>');
+    const ICON_PENCIL = outlineIcon('<path stroke="var(--accent)" d="M14 4l6 6L8 22H2v-6L14 4Z"/>');
+    // "Save this to my meals" - a bookmark outline, same weight as the pencil beside it, accent
     // rather than danger because it adds something.
-    const ICON_BOOKMARK = chromeIcon(
-      '<path d="M 28 12 L 72 12 C 76 12 79 15 79 19 L 79 90 L 50 71 L 21 90 L 21 19 C 21 15 24 12 28 12 Z" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linejoin="round"/>'
-      + '<path d="M 50 29 L 50 55 M 37 42 L 63 42" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"/>');
-    const ICON_PENCIL_ON_ACCENT = chromeIcon(pencilBody('var(--on-accent)', '#e6edf2', 'var(--on-accent)'));
+    const ICON_BOOKMARK = outlineIcon('<path stroke="var(--accent)" d="M6 4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v16l-6-4-6 4Z"/>');
     // Chevrons. The right-facing one is the drawn artwork; the left-facing one is its arithmetic
     // mirror about x=50 (50*2 - x), not a hand-guessed second path - the same rule the icon work
     // uses for any bilateral shape, so the pair can never end up subtly mismatched.
@@ -1474,7 +1617,7 @@ let qty = 1;
     const filtered = meals.filter(function (m) { return m.name.toLowerCase().indexOf(savedQuery.toLowerCase()) !== -1; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
     html += filtered.map(function (m) {
       const i = meals.indexOf(m);
-      return '<div class="row"><span class="quick" data-i="' + i + '">' + esc(m.name) + '</span><span>' + Math.round(m.kcal) +
+      return '<div class="row"><span class="quick" data-i="' + i + '" style="display:flex;align-items:center;min-width:0">' + logThumb(m) + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none">' + esc(m.name) + '</span></span><span style="flex-shrink:0;white-space:nowrap">' + Math.round(m.kcal) +
         ' kcal <button class="editmeal" data-i="' + i + '" aria-label="Edit">' + ICON_PENCIL + '</button><button class="delmeal" data-i="' + i + '" aria-label="Delete">' + ICON_TRASH + '</button></span></div>';
     }).join('');
     if (meals.length && !filtered.length) html += '<div class="sub">No matches</div>';
@@ -1537,14 +1680,25 @@ let qty = 1;
       // pointing at that meal. The next food you looked up and saved then
       // OVERWROTE it -- name, macros and photo -- with no confirmation and no
       // undo. Five ordinary taps. Found by the 2026-09-01 sweep.
-      editingMeal = null;
-      editor.style.display = 'none';
-      setSavePhoto(null);
+      //
+      // 2026-09-18: this used to reset editingMeal/editor/savePhoto/lastPhotoTaken by hand,
+      // which (like the .meal button fix above) left `preview` out -- so starting a fresh photo
+      // after abandoning a previous one showed the OLD photo underneath the new camera prompt,
+      // exactly what Owen hit. clearPending() is the one real reset function and already covers
+      // all of this plus preview and any still-pending (not yet logged) identified food, which
+      // should also be abandoned when + is tapped to start over.
+      clearPending();
       setSheet(true);
-      lastPhotoTaken = null;
     });
     addCancel.addEventListener('click', function () {
       setSheet(false);
+    });
+    // Closes whichever entry-method card is open, without reopening the "+" sheet the way
+    // tapping addBtn itself does -- this button's whole point is a quieter, in-place way out.
+    document.getElementById('entryCancel').addEventListener('click', function () {
+      clearPending();
+      document.querySelectorAll('.entryMethod').forEach(function (el) { el.style.display = 'none'; });
+      statusEl.textContent = 'Cancelled';
     });
     document.querySelectorAll('.addOption').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -1556,6 +1710,7 @@ let qty = 1;
         const cardIds = { photo: 'photoCard', bc: 'bcCard', search: 'searchCard', dine: 'dineCard', desc: 'descCard', type: 'typeCard' };
         const card = document.getElementById(cardIds[b.dataset.mode] || 'descCard');
         card.style.display = 'block';
+        document.getElementById('entryCancel').style.display = 'block';
         // The card opens below the whole Today card, about 900px down on a phone; bring it up
         // so the thing he just asked for is what he is looking at (usability review, 4).
         if (card.scrollIntoView) card.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -1791,13 +1946,27 @@ if (data.error && /API key/i.test(data.error.message || '')) {
           refParts.push({ inline_data: { mime_type: 'image/jpeg', data: data } });
         }
       }
+      // 2026-09-19: this used to tell the model to send back 0 in every number field whenever it
+      // thought there was a saved-meal match, on the assumption the app would always resolve
+      // "match" to a real saved meal and use ITS numbers instead. It doesn't always: the lookup
+      // below is an exact string match, and the model isn't guaranteed to echo a saved name back
+      // byte-for-byte (case, whitespace, a paraphrase). When that lookup missed, the zeroed
+      // placeholder fell straight through to the log with no warning -- a real food recorded as
+      // contributing 0 calories to the day, indistinguishable on screen from deliberately logging
+      // water. Now the model is asked for a real estimate EVERY time, match or not, so a missed
+      // lookup falls back to an actual number instead of zero.
       const instructions = 'Identify the food described or shown in the LAST photo or description below.' +
         (refParts.length ? ' Some saved meals have reference photos shown first — compare the last photo against those first, since a visual match beats a guess.' : '') +
-        ' Meals the user has already saved: ' + (names || 'none') + '. If it is clearly one of those saved meals, put that exact saved name in "match" and 0 in every number field. Otherwise leave "match" empty, fill in a short name, and estimate kcal plus protein, fat and carbs in grams.';
+        ' Meals the user has already saved: ' + (names || 'none') + '. If it is clearly one of those saved meals, put that exact saved name in "match". Either way, always also fill in a short name and your best estimate of kcal, protein, fat and carbs in grams for this food -- even when you set "match", since that estimate is the fallback if the match cannot be resolved.';
       const food = await callGemini(refParts.concat(parts), instructions, foodSchema);
       if (!food) return;
       if (food.match) {
-        const hit = meals.find(function (m) { return m.name === food.match; });
+        // Exact match first; a trimmed/case-insensitive fallback next, since the model isn't
+        // guaranteed to echo a saved name back byte-for-byte. Only past both does this fall
+        // through to the real estimate above instead of a saved meal's real numbers.
+        const wanted = food.match.trim().toLowerCase();
+        const hit = meals.find(function (m) { return m.name === food.match; }) ||
+          meals.find(function (m) { return m.name.trim().toLowerCase() === wanted; });
         if (hit) {
           showFood(hit, 'saved');
           return;
@@ -2609,8 +2778,13 @@ if (data.error && /API key/i.test(data.error.message || '')) {
       try {
         localStorage.setItem('dineCupOz', String(dineCupOunces()));
         // Typing in the box at all means somebody has actually looked at a cup. Typing 16 counts:
-        // confirming the guess is as real an answer as correcting it.
-        if (dineCupOz.value !== '' && Number(dineCupOz.value) <= 64) localStorage.setItem('dineCupChecked', '1');
+        // confirming the guess is as real an answer as correcting it. 2026-09-19: this used to
+        // accept 0 or a negative number too (only excluded '') -- dineCupOunces() itself treats
+        // anything not > 0 as unset and falls back to the 16oz guess, so a 0/negative entry was
+        // marking the guess "confirmed" while the app kept silently guessing. Now uses the same
+        // > 0 test dineCupOunces() does.
+        const cupVal = Number(dineCupOz.value);
+        if (cupVal > 0 && cupVal <= 64) localStorage.setItem('dineCupChecked', '1');
         if (Number(dineCupOz.value) > 64) statusEl.textContent = 'No cup holds ' + dineCupOz.value + ' oz — using 64. Check the number.';
       } catch (e) { /* best effort */ }
       showCupLabel();
@@ -2870,7 +3044,7 @@ if (data.error && /API key/i.test(data.error.message || '')) {
     statusEl.textContent = 'Fill in all four numbers before saving - none of them can be negative';
     return;
   }
-  if (editingMeal === null && !savePhoto && !savingFromLog) {
+  if (editingMeal === null && !savePhoto && !photoOptional) {
     statusEl.textContent = 'Take a photo of the food before saving — that is how the app recognises it next time';
     return;
   }
@@ -3024,7 +3198,14 @@ savedEl.addEventListener('input', function (ev) {
       const key = todayKey();
       const isNewDay = !log[key];
       if (isNewDay) log[key] = [];
-      log[key].push({ name: f.name, meal: meal, kcal: f.kcal, protein: f.protein, fat: f.fat, carbs: f.carbs });
+      // 2026-09-18 photo debug sweep: `f.photo` used to be dropped here, which meant the
+      // logged-meal thumbnail feature added earlier the same day (logThumb(), used by Today/
+      // History/Saved meals) could never actually render one -- the data was tracked correctly
+      // right up to this exact line (scale() explicitly preserves .photo, showFood()/logFood's
+      // caller sets it), then silently discarded the one time it mattered. Found independently
+      // by two of the sweep's agents (the AI-photo path and the manual-entry path both hit it,
+      // since both funnel through this one function) before it ever reached Owen.
+      log[key].push({ name: f.name, meal: meal, kcal: f.kcal, protein: f.protein, fat: f.fat, carbs: f.carbs, photo: f.photo });
       if (!store('log', log)) {
         // Undo the push (and the day itself if this was its first entry) so the screen and the
         // stored copy agree -- otherwise the food shows in today's list, looks logged, and is
@@ -3147,6 +3328,31 @@ savedEl.addEventListener('input', function (ev) {
       q('elName').focus();
     }
 
+    // Small photo thumbnail on a logged meal's own row -- 2026-09-18, the last unbuilt piece of
+    // the app's photo-first pitch flagged in the UI audit: it's captured a photo with every
+    // photo-logged meal since the start, but the log itself never showed it back. Same size and
+    // style as the exercise-library thumbnail (32px, rounded, object-fit:cover, onerror removes
+    // a broken image) for one consistent "thumbnail" look across the app. Renders the FULL
+    // stored photo rather than a resized copy -- unlike refThumb() above (which exists purely to
+    // keep Gemini's request payload small), the browser downscales a data-URI image to a 32px
+    // box for free, and History only ever has one day's meals on screen at a time (days are
+    // collapsed by default), so there's no real cost to skipping a second stored copy here.
+    // pointer-events:none is load-bearing here, not cosmetic -- same reason as the batch-11
+    // icon comment above: .logname's own click handler is delegated and checks
+    // ev.target.classList.contains('logname'), so without this the thumbnail (a real element)
+    // would eat the tap and editLogEntry() would silently never fire when tapping the photo.
+    function logThumb(e) {
+      // 2026-09-19: a row with no photo used to render NO leading element at all, which kept the
+      // original "no fake placeholder icon" rule but caused a real, visible side effect -- a
+      // photo-logged row's name starts 42px in (32px thumbnail + 10px gap) while a plain-text
+      // row starts flush left, a ragged left edge inside the same list a tester actually noticed.
+      // Reserving the identical width as blank, invisible space keeps every name starting at the
+      // same x position without drawing anything fake in it -- still honest, just aligned.
+      return e.photo
+        ? '<img src="data:image/jpeg;base64,' + e.photo + '" alt="" loading="lazy" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex:0 0 auto;margin-right:10px;pointer-events:none" onerror="this.remove()">'
+        : '<span style="width:32px;margin-right:10px;flex:0 0 auto;pointer-events:none" aria-hidden="true"></span>';
+    }
+
     function showToday() {
       todayEl.dataset.day = todayKey();
       const entries = log[todayKey()] || [];
@@ -3166,7 +3372,14 @@ savedEl.addEventListener('input', function (ev) {
         let rows = '';
         entries.forEach(function (e, i) {
           if ((e.meal || 'Snack') !== m) return;
-          rows += '<div class="row"><span class="logname" data-day="' + todayKey() + '" data-i="' + i + '" title="Tap to fix the name or numbers">' + esc(e.name) + '</span><span>' + Math.round(e.kcal) +
+          // flex-shrink:0 on this second span -- 2026-09-18 photo sweep found a long meal name
+          // pushing the kcal + icon buttons below the width they need, wrapping the row onto 4
+          // stacked lines instead of one: with no shrink rule of its own, the browser's default
+          // flex-shrink math split the deficit between BOTH spans, so this side lost space too
+          // and its own children (text + buttons) wrapped since they aren't nowrap-protected.
+          // Pinning this span to its natural size forces all the shrinking onto the name span
+          // instead, which is the one actually built to absorb it (min-width:0 + ellipsis above).
+          rows += '<div class="row"><span class="logname" data-day="' + todayKey() + '" data-i="' + i + '" title="Tap to fix the name or numbers" style="display:flex;align-items:center;min-width:0">' + logThumb(e) + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none">' + esc(e.name) + '</span></span><span style="flex-shrink:0;white-space:nowrap">' + Math.round(e.kcal) +
             ' kcal <button class="savelog" data-day="' + todayKey() + '" data-i="' + i + '" aria-label="Save to my meals" title="Save to my meals">' + ICON_BOOKMARK + '</button>' +
             '<button class="del" data-i="' + i + '" aria-label="Delete">' + ICON_TRASH + '</button></span></div>';
         });
@@ -3201,12 +3414,15 @@ savedEl.addEventListener('input', function (ev) {
         // same tap works again once space has been freed. store() has already said what happened.
         if (!logFood(f, b.textContent)) return;
         statusEl.textContent = 'Logged ' + f.name + ' to ' + b.textContent;
-        logBtns.style.display = 'none';
-        saveBtn.style.display = 'none';
-        pending = null;
-        qty = 1;
-        document.getElementById('pendingSummary').innerHTML = '';
+        // 2026-09-18: this used to reset only logBtns/saveBtn/pending/qty/pendingSummary/
+        // suggestedMeal by hand, which is exactly the set of things clearPending() (below)
+        // already resets EXCEPT it also left `preview` (the raw camera photo shown while the AI
+        // looks at it) on screen — Owen hit this on his phone: log a photographed meal, and the
+        // photo just sat there instead of clearing. Calling the one real reset function instead
+        // of a second, incomplete hand-written copy of it fixes that and can't drift out of sync
+        // with it again.
         setSuggestedMeal(null);
+        clearPending();
       });
     });
 
@@ -3492,12 +3708,15 @@ savedEl.addEventListener('input', function (ev) {
       fProtein.value = '';
       fFat.value = '';
       fCarbs.value = '';
-      openEditor();
+      // 2026-09-19: photo now optional here (see photoOptional's own comment above) -- this
+      // entry point exists specifically for avoiding the camera, so it shouldn't turn around and
+      // require one.
+      openEditor(false, true);
       saveBtn.style.display = 'none';
       logBtns.style.display = 'none';
       warned = false;
       setSavePhoto(null);
-      statusEl.textContent = 'Type the numbers off the label, then take a photo of it';
+      statusEl.textContent = 'Type the numbers off the label — a photo is optional, but helps the app recognise it next time';
     });
 
     document.querySelectorAll('.tab').forEach(function (t) {
@@ -3653,6 +3872,17 @@ savedEl.addEventListener('input', function (ev) {
     // across recalculating the macros (editing an ingredient doesn't mean the dish looks
     // different) and only clears once the recipe is actually saved or a new one is read in.
     let recipePhoto = null;
+    // 2026-09-18 photo sweep, real bug: which recipe NAME `recipePhoto` was taken for. The
+    // comment above explains why the photo deliberately survives a recalculation ("editing an
+    // ingredient doesn't mean the dish looks different") -- but nothing distinguished that case
+    // from "typed and calculated a completely different recipe from scratch," since both go
+    // through the exact same rCalc -> showRecipe() path. Photograph a finished dish, abandon it
+    // without saving, then type and calculate an unrelated recipe, and the old photo silently
+    // rode along onto the new one -- and since a saved meal's photo also feeds Gemini's future
+    // photo-matching, a wrong one here can cause real future misidentifications, not just a
+    // cosmetic mismatch. showRecipe() below clears recipePhoto if the name has changed since it
+    // was taken, which keeps the intended "same dish, tweaked an ingredient" case working.
+    let recipePhotoFor = null;
     let lastRecipeIngredients = null;
     let lastRecipeServings = null;
     const cSex = document.getElementById('cSex');
@@ -3930,6 +4160,41 @@ const bkBox = document.getElementById('bkBox');
       statusEl.textContent = 'Food log downloaded as CSV.';
     });
 
+    // Pulse checkpoint item 4 (2026-09-17): the food log got a CSV export on 2026-09-14 (N-4);
+    // workout history didn't have the matching one. Same shape - one row per SET, not per
+    // workout, since that's the level a spreadsheet actually wants (Strong's own CSV export
+    // does the same, and was named directly as a reason serious lifters pick it over an app
+    // that only exports session totals). Weight is always stored in lb regardless of the
+    // display toggle - same standing rule as everywhere else in this file.
+    function workoutHistoryCSV() {
+      const rows = [['Date', 'Routine', 'Exercise', 'Set', 'Weight (lb)', 'Reps', 'Warm-up', 'PR', 'Duration (min)']];
+      workouts.forEach(function (w) {
+        const dur = w.durationSec ? Math.round(w.durationSec / 60) : '';
+        (w.exercises || []).forEach(function (e) {
+          (e.sets || []).forEach(function (s, i) {
+            rows.push([w.date, w.routine, e.name, i + 1, s.weight, s.reps, s.warmup ? 'yes' : '', s.pr ? 'yes' : '', dur]);
+          });
+        });
+      });
+      // Same RFC 4180 escaping as foodLogCSV - routine and exercise names are free text too.
+      return rows.map(function (row) {
+        return row.map(function (cell) {
+          const s = String(cell);
+          return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }).join(',');
+      }).join('\r\n');
+    }
+    document.getElementById('bkWorkoutCsv').addEventListener('click', function () {
+      const url = URL.createObjectURL(new Blob([workoutHistoryCSV()], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'calorie-workout-history-' + todayKey() + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 4000);
+      statusEl.textContent = 'Workout history downloaded as CSV.';
+    });
+
     document.getElementById('bkRestore').addEventListener('click', function () {
       let data;
       try {
@@ -4005,6 +4270,11 @@ const bkBox = document.getElementById('bkBox');
       }
     });
     let calcDraft = null;
+    // N-7 (2026-09-17, Pulse checkpoint item 1): the calibration advice used to just tell Owen
+    // to change his target by ~200 kcal and leave him to do the arithmetic and re-type it under
+    // Settings. adviceDraft holds the actual computed number so the advice card can offer a
+    // one-tap "Apply" the same way the calculator's cApply button already works.
+    let adviceDraft = null;
     wDate.value = todayKey();
 
     function saveWeights() {
@@ -4013,6 +4283,12 @@ const bkBox = document.getElementById('bkBox');
     }
     // Wide on purpose: it only has to catch numbers no human weighs, not judge anyone.
     function plausibleBodyweight(lbs) { return lbs >= 30 && lbs <= 1500; }
+    // 2026-09-19 full sweep: weight got this exact guard after a real fat-fingered-typo incident
+    // (comment above), but age and height never got the equivalent one -- so "230" typed for "23"
+    // sailed straight through into the BMR formula (age carries a -5 coefficient with no cap) and
+    // produced a confidently-wrong daily target, appliable in one tap, with zero warning.
+    function plausibleAge(age) { return age >= 10 && age <= 100; }
+    function plausibleHeightInches(inches) { return inches >= 36 && inches <= 96; }
 
     wAdd.addEventListener('click', function () {
       const lbs = Number(wLbs.value);
@@ -4289,7 +4565,9 @@ const bkBox = document.getElementById('bkBox');
           let rows = '';
           entries.forEach(function (e, i) {
             if ((e.meal || 'Snack') !== m) return;
-            rows += '<div class="row subrow"><span class="logname" data-day="' + k + '" data-i="' + i + '" title="Tap to fix the name or numbers">' + esc(e.name) + '</span><span>' + Math.round(e.kcal) +
+            // flex-shrink:0 -- same fix as the Today list above, same reason (long name wrapping
+            // this span's own kcal+icon onto stacked lines otherwise).
+            rows += '<div class="row subrow"><span class="logname" data-day="' + k + '" data-i="' + i + '" title="Tap to fix the name or numbers" style="display:flex;align-items:center;min-width:0">' + logThumb(e) + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none">' + esc(e.name) + '</span></span><span style="flex-shrink:0;white-space:nowrap">' + Math.round(e.kcal) +
               ' kcal <button class="savelog" data-day="' + k + '" data-i="' + i + '" aria-label="Save to my meals" title="Save to my meals">' + ICON_BOOKMARK + '</button></span></div>';
           });
           if (!rows) return;
@@ -4464,18 +4742,45 @@ const bkBox = document.getElementById('bkBox');
       const r = t.lbsPerWeek;
       html += 'Trend: <b>' + (r >= 0 ? '+' : '') + r.toFixed(2) + ' lb/week</b> over ' +
         t.days + ' days, from ' + t.n + ' weigh-ins.<br><br>';
+      adviceDraft = null;
       if (intake && intake.avg < targets.kcal - 250) {
         html += 'You are averaging ' + Math.round(targets.kcal - intake.avg) +
           ' kcal a day under target. Hit the target you already have before changing it.';
       } else if (r < 0.25) {
         html += 'Slower than the 0.25–0.75 lb/week band. Add about 200 kcal a day and check again in two weeks.';
+        // Same +/-200 the text above has always said - the button applies the literal number
+        // the sentence names, never a different one computed some other way.
+        adviceDraft = adviceTargetFrom(targets.kcal + 200);
       } else if (r > 0.75) {
         html += 'Faster than 0.75 lb/week — more of that gain is fat than it needs to be. Cut about 200 kcal a day.';
+        adviceDraft = adviceTargetFrom(targets.kcal - 200);
       } else {
         html += 'Inside the 0.25–0.75 lb/week band. Leave your calories where they are.';
       }
+      if (adviceDraft) {
+        html += '<br><br><button id="aApply">Apply ' + adviceDraft.kcal + ' kcal as my new target</button>';
+      }
       adviceEl.innerHTML = html;
     }
+
+    // Protein stays tied to bodyweight (1 g/lb), not to calibration drift - only fat/carbs move
+    // with the kcal change, same 25%-of-calories-as-fat split the calculator itself uses.
+    function adviceTargetFrom(kcal) {
+      const protein = targets.protein;
+      const fat = Math.max(0, Math.round(kcal * 0.25 / 9)); // same clamp as the calculator (cCalc)
+      const carbs = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
+      return { kcal: kcal, protein: protein, fat: fat, carbs: carbs };
+    }
+
+    adviceEl.addEventListener('click', function (ev) {
+      if (ev.target.id !== 'aApply' || !adviceDraft) return;
+      targets = adviceDraft;
+      store('targets', targets);
+      adviceDraft = null;
+      showToday();
+      showAdvice();
+      statusEl.textContent = 'Targets updated to ' + targets.kcal + ' kcal';
+    });
 
     const recipeSchema = {
       type: 'OBJECT',
@@ -4523,6 +4828,13 @@ const bkBox = document.getElementById('bkBox');
     function showRecipe(ingredients, servings) {
       lastRecipeIngredients = ingredients;
       lastRecipeServings = servings;
+      // See recipePhotoFor's own comment above: a finished-dish photo taken for one recipe name
+      // must not carry over once the name has changed underneath it.
+      const nameNow = rName.value || 'Recipe';
+      if (recipePhoto && recipePhotoFor !== nameNow) {
+        recipePhoto = null;
+        recipePhotoFor = null;
+      }
       const total = { kcal: 0, protein: 0, fat: 0, carbs: 0 };
       let rows = '';
       ingredients.forEach(function (g) {
@@ -4584,6 +4896,7 @@ const bkBox = document.getElementById('bkBox');
         return;
       }
       recipePhoto = shot;
+      recipePhotoFor = rName.value || 'Recipe';
       statusEl.textContent = 'Photo attached — tap Save as a meal';
       showRecipe(lastRecipeIngredients, lastRecipeServings);
     });
@@ -4604,6 +4917,7 @@ const bkBox = document.getElementById('bkBox');
       }
       showSaved();
       recipePhoto = null;
+      recipePhotoFor = null;
       statusEl.textContent = 'Saved ' + recipeDraft.name + ' — it is now in Saved meals and photo recognition';
     });
 
@@ -4632,7 +4946,7 @@ const bkBox = document.getElementById('bkBox');
     };
 
     async function readRecipe(parts) {
-      recipePhoto = null; // a new recipe is being read in — any earlier finished-dish photo no longer applies
+      recipePhoto = null; recipePhotoFor = null; // a new recipe is being read in — any earlier finished-dish photo no longer applies
       statusEl.textContent = 'Reading the recipe...';
       const instructions = 'This is a recipe the user copied or photographed. Extract it. Return the recipe name; how many servings the batch makes, or 0 if the recipe does not say; the ingredient list, giving for each ingredient the kcal, protein, fat and carbs in grams for the amount stated FOR THE WHOLE BATCH and not per serving; and the method steps as written in the text, condensed but never invented. If the text contains no method at all, return an empty steps list.';
       const data = await callGemini(parts, instructions, fullRecipeSchema);
@@ -4691,6 +5005,14 @@ const bkBox = document.getElementById('bkBox');
         statusEl.textContent = 'That does not look like a bodyweight in lb (' + lbs + ') — check the number';
         return;
       }
+      if (!plausibleAge(age)) {
+        statusEl.textContent = 'That does not look like an age in years (' + age + ') — check the number';
+        return;
+      }
+      if (!plausibleHeightInches(inches)) {
+        statusEl.textContent = 'That does not look like a height (' + Math.floor(inches / 12) + 'ft ' + (inches % 12) + 'in) — check the numbers';
+        return;
+      }
       // Save the sex pick here too, not just from the dropdown's own 'change' event (line ~1817)
       // -- if the dropdown's default already matched what you wanted, the browser never fires
       // 'change' on it, so liftSex silently never got saved even though the calculator looked
@@ -4717,8 +5039,10 @@ const bkBox = document.getElementById('bkBox');
       const rate = rates[cDir.value][cRate.value];
       const kcal = Math.round(tdee + rate * 500);
       const protein = Math.round(lbs);
-      const fat = Math.round(kcal * 0.25 / 9);
-      const carbs = Math.round((kcal - protein * 4 - fat * 9) / 4);
+      const fat = Math.max(0, Math.round(kcal * 0.25 / 9));
+      // 2026-09-19: at a high bodyweight (protein = 1g/lb) combined with a low kcal target, protein
+      // + fat calories alone can exceed kcal, and nothing used to stop carbs from going negative.
+      const carbs = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
       calcDraft = { kcal: kcal, protein: protein, fat: fat, carbs: carbs };
       let html = '<b>Your numbers</b>' +
         statRow('BMR — burned doing nothing', Math.round(bmr) + ' kcal') +
@@ -5259,6 +5583,90 @@ const bkBox = document.getElementById('bkBox');
         cue: r[4]
       };
     });
+
+    // Pulse checkpoint item 6 (2026-09-17): Owen asked for real instructions per exercise, not
+    // just the one-line cue. Writing 410 genuinely distinct setup paragraphs by hand risks two
+    // bad outcomes: either they turn into padding that repeats the cue in more words, or - worse
+    // - they assert exercise-specific form detail for movements not checked carefully enough to
+    // be sure it's right, which is a real safety question for something like Snatch or a Front
+    // Squat, not just a writing-quality one. What genuinely differs by EQUIPMENT, not by exact
+    // movement, is how you approach and set up the thing - so that's what this covers, honestly
+    // labelled as general rather than pretending to be exercise-specific. The per-exercise cue
+    // (already specific and already good - checked a random sample across the whole library
+    // before deciding this, not just the first section) stays exactly as-is underneath it.
+    const EQUIPMENT_SETUP = {
+      'Barbell': 'Load the bar evenly and use collars. Check every plate is seated flush before you lift - a plate that shifts under load is worse than a plate that’s merely heavy.',
+      'Dumbbell': 'Pick both dumbbells up and get fully into position before the first rep. Swinging one into place mid-set, one-handed, is a common way to tweak a shoulder.',
+      'EZ Bar': 'Use the angled part of the grip, not the straight ends - the camber exists to take strain off the wrists, and gripping it like a straight bar cancels that out.',
+      'Cable': 'Set the pulley height and attachment for the exercise, then check the pin is fully seated before you pull. A wrong-height pulley usually just changes the resistance curve, not the safety.',
+      'Machine': 'Set the seat and any pins before your first rep. A machine sized wrong for your build changes where the resistance actually lands, not just how heavy it feels.',
+      'Hammer Strength': 'Plate-loaded - set the seat first, then load both sides evenly so the machine doesn’t rock under you mid-rep.',
+      'Smith Machine': 'The bar travels on a fixed rail. Set your body position under that fixed path rather than trying to adjust the bar’s line to you.',
+      'Bodyweight': 'No external load to set up - the thing to get right is where you brace and how controlled the tempo is, not a weight on a bar.',
+      'Kettlebell': 'The handle sits higher and the balance point is different from a dumbbell - get a feel for it with a lighter bell before loading up on anything ballistic.',
+      'Trap Bar': 'Step inside the frame with the handles at your sides. The neutral grip and centred load are usually easier on the lower back than a straight bar for the same lift.',
+      'Resistance Band': 'The anchor point and the band itself matter more than they look - a poorly anchored band, or one with a visible nick, is the real risk here, not the exercise.',
+      'Suspension (TRX)': 'Anchor point overhead, straps even length. The more horizontal your body is to the floor, the harder the exercise - regulate difficulty with foot position, not by rushing reps.',
+      'Sled': 'Load it, then physically check the straps or handles are secure before you push or pull. A harness that lets go mid-rep is the actual hazard, not the weight.',
+      'Medicine Ball': 'No rack or collars to set up - just pick a ball you can control through the whole movement, including catching it if the exercise involves a throw.',
+      'Plate': 'Held or pressed directly, no bar. Grip it by the rim, and keep your thumbs clear of the rim’s edge on anything pressed or thrown.'
+    };
+
+    // Pulse checkpoint item 6 (2026-09-17): a real photo per exercise, sourced from
+    // wger.de's open exercise database plus a hand-picked set from Wikimedia Commons
+    // (CC-licensed, verified via each site's own API - not assumed). Coverage is HONEST, not
+    // padded: 39 of 410 exercises (10%) have a real match - the rest show no photo rather
+    // than a wrong or invented one. Every candidate image was actually opened and looked at
+    // full-size before shipping, not just matched by name - 4 wger candidates were dropped
+    // after that review (2 were AI-generated art with nothing to do with the movement, 1 had
+    // foreign-language captions burned in, 1 carried a visible equipment-brand watermark).
+    // A bigger third-party database was considered and rejected: free-exercise-db is bigger
+    // but has an open, unanswered question on its own GitHub about where its images came
+    // from; ExerciseDB is a paid RapidAPI product with no stated media rights either. See
+    // build_photo_map.py in Projects/Calorie App/exercise-visuals/ for the full method, the
+    // alias list, and the block list with reasons. Regenerate with that script, never
+    // hand-edit below.
+    const EXERCISE_PHOTO = {
+      "Flat Barbell Bench Press": { image: "https://wger.de/media/exercise-images/192/Bench-press-1.png", thumb: "https://wger.de/media/exercise-images/192/Bench-press-1.png.400x400_q85.png", credit: "wger.de, CC BY-SA 3.0" },
+      "Incline Dumbbell Press": { image: "https://upload.wikimedia.org/wikipedia/commons/4/4d/Dumbbell_incline_bench_press_1.svg", thumb: "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Dumbbell_incline_bench_press_1.svg/500px-Dumbbell_incline_bench_press_1.svg.png", credit: "Wikimedia Commons (Everkinetic), CC BY-SA 3.0" },
+      "Dumbbell Floor Press": { image: "https://wger.de/media/exercise-images/1084/91dd5a95-1c45-46f2-a074-de41b6ad599b.jpg", thumb: "https://wger.de/media/exercise-images/1084/91dd5a95-1c45-46f2-a074-de41b6ad599b.jpg.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Dips": { image: "https://wger.de/media/exercise-images/194/34600351-8b0b-4cb0-8daa-583537be15b0.png", thumb: "https://wger.de/media/exercise-images/194/34600351-8b0b-4cb0-8daa-583537be15b0.png.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Sumo Deadlift": { image: "https://wger.de/media/exercise-images/630/b0f0c7d8-5878-4d9e-b820-21acc013741d.webp", thumb: "https://wger.de/media/exercise-images/630/b0f0c7d8-5878-4d9e-b820-21acc013741d.webp.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Romanian Deadlift": { image: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Romanian_dead_lift_1.svg", thumb: "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5c/Romanian_dead_lift_1.svg/500px-Romanian_dead_lift_1.svg.png", credit: "Wikimedia Commons (Everkinetic), CC BY-SA 3.0" },
+      "Dumbbell Shrug": { image: "https://wger.de/media/exercise-images/151/Dumbbell-shrugs-2.png", thumb: "https://wger.de/media/exercise-images/151/Dumbbell-shrugs-2.png.400x400_q85.jpg", credit: "wger.de, CC BY-SA 3.0" },
+      "Seated Cable Row": { image: "https://wger.de/media/exercise-images/1117/2555c4c3-a84d-47db-b83b-cbf721f12e45.png", thumb: "https://wger.de/media/exercise-images/1117/2555c4c3-a84d-47db-b83b-cbf721f12e45.png.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Lat Pulldown": { image: "https://upload.wikimedia.org/wikipedia/commons/e/e0/Wide_grip_lat_pull_down_1.svg", thumb: "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Wide_grip_lat_pull_down_1.svg/500px-Wide_grip_lat_pull_down_1.svg.png", credit: "Wikimedia Commons (Everkinetic), CC BY-SA 3.0" },
+      "Chin-Up": { image: "https://wger.de/media/exercise-images/152/6c1a7459-266d-491a-bd50-7cbaea2bc771.png", thumb: "https://wger.de/media/exercise-images/152/6c1a7459-266d-491a-bd50-7cbaea2bc771.png.400x400_q85.png", credit: "wger.de, CC BY-SA 3.0" },
+      "Good Morning": { image: "https://wger.de/media/exercise-images/1392/a02c9c7d-f42d-43e0-9946-1b99b014daee.png", thumb: "https://wger.de/media/exercise-images/1392/a02c9c7d-f42d-43e0-9946-1b99b014daee.png.400x400_q85.png", credit: "wger.de, CC BY-SA 3.0" },
+      "Push Press": { image: "https://wger.de/media/exercise-images/478/70a2d72c-a822-45f3-8de2-54ea85951b84.jpg", thumb: "https://wger.de/media/exercise-images/478/70a2d72c-a822-45f3-8de2-54ea85951b84.jpg.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Seated Dumbbell Shoulder Press": { image: "https://wger.de/media/exercise-images/123/dumbbell-shoulder-press-large-1.png", thumb: "https://wger.de/media/exercise-images/123/dumbbell-shoulder-press-large-1.png.400x400_q85.jpg", credit: "wger.de, CC BY-SA 3.0" },
+      "Single-Arm Dumbbell Shoulder Press": { image: "https://wger.de/media/exercise-images/1968/cd92e973-a0d9-4e5f-9011-5369012598d3.png", thumb: "https://wger.de/media/exercise-images/1968/cd92e973-a0d9-4e5f-9011-5369012598d3.png.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Lateral Raise": { image: "https://wger.de/media/exercise-images/148/lateral-dumbbell-raises-large-2.png", thumb: "https://wger.de/media/exercise-images/148/lateral-dumbbell-raises-large-2.png.400x400_q85.jpg", credit: "wger.de, CC BY-SA 3.0" },
+      "Cable Rear Delt Fly": { image: "https://wger.de/media/exercise-images/822/74affc0d-03b6-4f33-b5f4-a822a2615f68.png", thumb: "https://wger.de/media/exercise-images/822/74affc0d-03b6-4f33-b5f4-a822a2615f68.png.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Machine Lateral Raise": { image: "https://wger.de/media/exercise-images/1654/aa724a58-b3b5-4522-b278-1155416236a5.jpg", thumb: "https://wger.de/media/exercise-images/1654/aa724a58-b3b5-4522-b278-1155416236a5.jpg.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Hammer Curl": { image: "https://wger.de/media/exercise-images/86/Bicep-hammer-curl-1.png", thumb: "https://wger.de/media/exercise-images/86/Bicep-hammer-curl-1.png.400x400_q85.png", credit: "wger.de, CC BY-SA 3.0" },
+      "Incline Dumbbell Curl": { image: "https://upload.wikimedia.org/wikipedia/commons/8/89/Flexor_incline_curls_with_dumbbell_1.svg", thumb: "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/Flexor_incline_curls_with_dumbbell_1.svg/500px-Flexor_incline_curls_with_dumbbell_1.svg.png", credit: "Wikimedia Commons (Everkinetic), CC BY-SA 3.0" },
+      "Barbell Wrist Curl": { image: "https://wger.de/media/exercise-images/51/f1730f56-7aca-4566-8338-3e42b1bee6e1.webp", thumb: "https://wger.de/media/exercise-images/51/f1730f56-7aca-4566-8338-3e42b1bee6e1.webp.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Triceps Pushdown": { image: "https://upload.wikimedia.org/wikipedia/commons/1/13/Triceps_pushdown_with_cable_1.svg", thumb: "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/13/Triceps_pushdown_with_cable_1.svg/500px-Triceps_pushdown_with_cable_1.svg.png", credit: "Wikimedia Commons (Everkinetic), CC BY-SA 3.0" },
+      "Barbell Back Squat": { image: "https://wger.de/media/exercise-images/1801/60043328-1cfb-4289-9865-aaf64d5aaa28.jpg", thumb: "https://wger.de/media/exercise-images/1801/60043328-1cfb-4289-9865-aaf64d5aaa28.jpg.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Box Squat": { image: "https://wger.de/media/exercise-images/977/3124c091-6395-4377-96c5-56048b627ceb.png", thumb: "https://wger.de/media/exercise-images/977/3124c091-6395-4377-96c5-56048b627ceb.png.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Dumbbell Front Squat": { image: "https://wger.de/media/exercise-images/1640/bdea82f1-15ef-4649-8b5a-1303cfc178e7.webp", thumb: "https://wger.de/media/exercise-images/1640/bdea82f1-15ef-4649-8b5a-1303cfc178e7.webp.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Leg Press": { image: "https://wger.de/media/exercise-images/371/d2136f96-3a43-4d4c-9944-1919c4ca1ce1.webp", thumb: "https://wger.de/media/exercise-images/371/d2136f96-3a43-4d4c-9944-1919c4ca1ce1.webp.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Leg Extension": { image: "https://wger.de/media/exercise-images/369/78c915d1-e46d-4d30-8124-65d68664c3ef.png", thumb: "https://wger.de/media/exercise-images/369/78c915d1-e46d-4d30-8124-65d68664c3ef.png.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Smith Machine Squat": { image: "https://wger.de/media/exercise-images/1747/af9647dd-04ec-4adf-9c07-4e33edb77277.jpg", thumb: "https://wger.de/media/exercise-images/1747/af9647dd-04ec-4adf-9c07-4e33edb77277.jpg.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Smith Machine Split Squat": { image: "https://wger.de/media/exercise-images/1593/9815fcd6-cf40-4ddd-9b38-2eac25973de1.gif", thumb: "https://wger.de/media/exercise-images/1593/9815fcd6-cf40-4ddd-9b38-2eac25973de1.gif", credit: "wger.de, CC BY-SA 4.0" },
+      "Pistol Squat": { image: "https://wger.de/media/exercise-images/456/3b681e59-377b-40db-9113-ca5873ce084b.jpg", thumb: "https://wger.de/media/exercise-images/456/3b681e59-377b-40db-9113-ca5873ce084b.jpg.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Seated Leg Curl": { image: "https://wger.de/media/exercise-images/117/seated-leg-curl-large-1.png", thumb: "https://wger.de/media/exercise-images/117/seated-leg-curl-large-1.png.400x400_q85.jpg", credit: "wger.de, CC BY-SA 3.0" },
+      "Dumbbell Romanian Deadlift": { image: "https://wger.de/media/exercise-images/1652/0306c8c0-70cc-45d4-92de-6fa72ceaa834.webp", thumb: "https://wger.de/media/exercise-images/1652/0306c8c0-70cc-45d4-92de-6fa72ceaa834.webp.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Glute Bridge": { image: "https://wger.de/media/exercise-images/265/7528acb4-b2cc-4b75-b6ae-d514cbd4f78b.png", thumb: "https://wger.de/media/exercise-images/265/7528acb4-b2cc-4b75-b6ae-d514cbd4f78b.png.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Kettlebell Swing": { image: "https://wger.de/media/exercise-images/960/da4d0560-da89-4bb5-b91f-746458fb04ad.png", thumb: "https://wger.de/media/exercise-images/960/da4d0560-da89-4bb5-b91f-746458fb04ad.png.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Leg Press Calf Raise": { image: "https://upload.wikimedia.org/wikipedia/commons/a/a1/Calves_press_on_leg_machine_1.svg", thumb: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a1/Calves_press_on_leg_machine_1.svg/500px-Calves_press_on_leg_machine_1.svg.png", credit: "Wikimedia Commons (Everkinetic), CC BY-SA 3.0" },
+      "Plank": { image: "https://wger.de/media/exercise-images/458/b7bd9c28-9f1d-4647-bd17-ab6a3adf5770.png", thumb: "https://wger.de/media/exercise-images/458/b7bd9c28-9f1d-4647-bd17-ab6a3adf5770.png.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Weighted Crunch": { image: "https://wger.de/media/exercise-images/1648/63ae02d6-6dd9-4e9e-84da-d4905e78a33c.jpg", thumb: "https://wger.de/media/exercise-images/1648/63ae02d6-6dd9-4e9e-84da-d4905e78a33c.jpg.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" },
+      "Russian Twist": { image: "https://wger.de/media/exercise-images/1193/70ca5d80-3847-4a8c-8882-c6e9e485e29e.png", thumb: "https://wger.de/media/exercise-images/1193/70ca5d80-3847-4a8c-8882-c6e9e485e29e.png.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Pallof Press": { image: "https://wger.de/media/exercise-images/1194/34c03421-0803-4859-a2b0-5710f2bd94cd.png", thumb: "https://wger.de/media/exercise-images/1194/34c03421-0803-4859-a2b0-5710f2bd94cd.png.400x400_q85.png", credit: "wger.de, CC BY-SA 4.0" },
+      "Dumbbell Side Bend": { image: "https://wger.de/media/exercise-images/1650/1d7a5336-ec0b-4898-a474-78ba32789bf3.webp", thumb: "https://wger.de/media/exercise-images/1650/1d7a5336-ec0b-4898-a474-78ba32789bf3.webp.400x400_q85.jpg", credit: "wger.de, CC BY-SA 4.0" }
+    };
     // Names are matched on a normalised key, not the raw string. The reason is the apostrophe:
     // the library writes "Captain's Chair Leg Raise" with a curly one, a phone keyboard's smart
     // punctuation may produce either, and a desktop keyboard produces the straight one. An exact
@@ -5839,7 +6247,13 @@ const bkBox = document.getElementById('bkBox');
       if (ev.target.classList.contains('delRt')) {
         const removed = routines[i];
         routines.splice(i, 1);
-        saveRoutines();
+        // 2026-09-19: this used to call saveRoutines() and just carry on regardless of whether it
+        // actually wrote -- unlike rtSave (above) and the PPL loader, which both put the array
+        // back and bail out on a failed write. If storage was full, the routine vanished from the
+        // list and the Undo toast appeared as normal, but it was never actually gone -- it came
+        // right back on the next reload, with no indication anything had failed beyond the
+        // separate "STORAGE FULL" alert store() already shows.
+        if (!saveRoutines()) { routines.splice(i, 0, removed); showRoutineList(); populateRoutinePick(); return; }
         showRoutineList();
         populateRoutinePick();
         showUndo('Deleted ' + removed.name, function () {
@@ -6224,7 +6638,14 @@ const bkBox = document.getElementById('bkBox');
           // 50 is well past any real working set and comfortably past where the
           // 1RM formula means anything. Refusing is deliberate rather than
           // clamping: clamping would record a number he never did.
-          if (weight < 0 || reps < 0 || reps > 50) { badNumber = true; return; }
+          // 2026-09-19: weight had a floor (>=0) but no ceiling and no NaN check, unlike reps --
+          // a typo'd weight (an extra digit, or a value that survives as NaN through a mobile-
+          // keyboard edge case) used to sail straight through and silently corrupt "best ever",
+          // 1RM, PRs and the strength-standard ranking. isNaN() first because every other
+          // comparison against NaN is false, including `> 1500`. 1500 matches the app's own
+          // existing bodyweight plausibility ceiling (plausibleBodyweight) -- already far beyond
+          // any real barbell lift.
+          if (isNaN(weight) || weight < 0 || weight > 1500 || reps < 0 || reps > 50) { badNumber = true; return; }
           // A blank weight box means BODYWEIGHT (pull-ups, dips, planks), not
           // "no set" — reps is what makes a set real. This used to read
           // `if (weight && reps)`, and since Number('') is 0 and 0 is falsy,
@@ -6268,7 +6689,7 @@ const bkBox = document.getElementById('bkBox');
           if (est > best) best = est;
         });
       });
-      if (badNumber) { statusEl.textContent = 'A set has a weight or rep count that cannot be right \u2014 a negative number, or more than 50 reps. Fix it before finishing'; return; }
+      if (badNumber) { statusEl.textContent = 'A set has a weight or rep count that cannot be right \u2014 a negative or unreadable number, over 1500 lb, or more than 50 reps. Fix it before finishing'; return; }
       if (!exercises.length) { statusEl.textContent = 'Log at least one set before finishing'; return; }
       // Which routine was this? Prefer the name recorded when the workout
       // started — it survives the routine being renamed or deleted mid-session.
@@ -6532,6 +6953,29 @@ const bkBox = document.getElementById('bkBox');
           wRoutinePick.value = String(idx);
           if (!wExerciseLog.querySelector('.setRow')) {
             wRoutinePick.dispatchEvent(new Event('change'));
+          }
+        } else if (!wExerciseLog.querySelector('.setRow')) {
+          // 2026-09-19: idx === -1 means the routine this workout was started from got renamed
+          // or deleted while it was active (nothing stops that). The block above silently did
+          // nothing in that case -- the picker can't select an option that no longer exists, so
+          // 'change' never fires, so the typed sets never get rebuilt even though they're sitting
+          // right there in workoutDraft. It LOOKED exactly like the original 2026-09-16 data-loss
+          // bug this whole draft system was built to fix, just reached a different way. The
+          // routine object was only ever needed to build the empty template cards
+          // (logCardsHtml(routine.exercises)) before overlaying the draft on top -- but
+          // restoreDraftIntoLog() already builds a fresh card from scratch for any exercise it
+          // can't find an existing card for, so skipping the template and handing it an empty
+          // log does the same job with no routine needed at all.
+          const draft = loadJSON('workoutDraft', null);
+          if (draft && !activeWorkoutIsStale() && draft.routineName === activeWorkout.routineName) {
+            wExerciseLog.innerHTML = '';
+            restoreDraftIntoLog(draft);
+            wFinish.style.display = 'block';
+            wAddExercise.style.display = 'block';
+            wNoteCard.style.display = 'block';
+            wNote.value = draft.note || '';
+            document.getElementById('restControls').style.display = 'block';
+            statusEl.textContent = '"' + activeWorkout.routineName + '" no longer exists as a routine, but your typed sets were recovered from this session’s autosave.';
           }
         }
       }
@@ -6850,7 +7294,13 @@ const bkBox = document.getElementById('bkBox');
       const pretty = new Date(dateKey + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
       const overlay = document.createElement('div');
       overlay.id = 'workoutDetail';
-      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch';
+      // 2026-09-19 full sweep: 0.75 alpha is a dimming SCRIM, meant for a small centered dialog
+      // that sits on top of an opaque .card (see askForText's overlay above) -- this is instead a
+      // full-screen detail view, and its own header row isn't wrapped in a .card, so it sat
+      // directly on that translucent backdrop with the page's numbers/calendar faintly bleeding
+      // through behind the title and Close button, on every single day-log view. A detail screen
+      // should read as its own screen, not a see-through dialog over the last one.
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(8,8,11,0.97);z-index:999;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch';
       overlay.innerHTML = '<div class="wdInner" style="max-width:440px;margin:0 auto">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
         '<b style="font-size:16px">' + pretty + '</b>' +
@@ -6949,7 +7399,9 @@ const bkBox = document.getElementById('bkBox');
           card.querySelectorAll('.setRow').forEach(function (row) {
             const reps = Number(row.querySelector('.setReps').value);
             const editWeight = fromInputWeight(row.querySelector('.setWeight').value);
-            if (editWeight < 0 || reps < 0 || reps > 50) { badNumber = true; return; }
+            // 2026-09-19: same fix as wFinish's identical check -- no ceiling and no NaN guard
+            // meant an edited weight could silently corrupt strength history with no warning.
+            if (isNaN(editWeight) || editWeight < 0 || editWeight > 1500 || reps < 0 || reps > 50) { badNumber = true; return; }
             if (reps <= 0) return;
             const set = { weight: editWeight || 0, reps: reps, drop: row.dataset.kind === 'drop' };
             if (row.dataset.kind === 'warmup') set.warmup = true;
@@ -7159,16 +7611,28 @@ const bkBox = document.getElementById('bkBox');
 
       const overlay = document.createElement('div');
       overlay.id = 'exerciseDetail';
-      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch';
+      // 2026-09-19: same fix as workoutDetail's overlay above -- a translucent full-screen
+      // backdrop let the page underneath bleed through behind this view's own header, on every
+      // exercise opened from the Library.
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(8,8,11,0.97);z-index:1000;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch';
       overlay.innerHTML = '<div style="max-width:440px;margin:0 auto">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
         '<b style="font-size:16px">' + esc(name) + '</b>' +
         '<button class="grey exdClose" type="button" style="flex:0 0 auto;padding:6px 12px">Close</button></div>' +
 
         '<div class="card">' +
-        (lib ? '<div class="sub" style="padding-bottom:2px">' + esc(lib.equipment) + ' \u00b7 ' +
+        (lib ? (EXERCISE_PHOTO[lib.name] ? '<img src="' + esc(EXERCISE_PHOTO[lib.name].thumb) + '" alt="' + esc(lib.name) + '" loading="lazy" ' +
+            'style="width:100%;border-radius:8px;display:block;margin-bottom:2px" ' +
+            // The URL is a hotlink to wger.de, not a file this app controls - if it ever 404s
+            // (image renamed/removed upstream), hide the broken-image icon and its caption
+            // rather than show visibly broken UI. Nothing else on the card depends on it.
+            'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'none\'">' +
+            '<div class="sub" style="margin-bottom:8px">Photo: ' + esc(EXERCISE_PHOTO[lib.name].credit) + '</div>' : '') +
+          '<div class="sub" style="padding-bottom:2px">' + esc(lib.equipment) + ' \u00b7 ' +
           esc(lib.primary.join(', ')) + (lib.secondary.length ? ' (also ' + esc(lib.secondary.join(', ')) + ')' : '') + '</div>' +
-          '<div style="font-size:14px;margin:6px 0">' + esc(lib.cue) + '</div>'
+          (EQUIPMENT_SETUP[lib.equipment] ? '<div class="sub" style="margin:6px 0 2px"><b>Setup</b></div><div style="font-size:14px;margin:0 0 8px">' + esc(EQUIPMENT_SETUP[lib.equipment]) + '</div>' : '') +
+          '<div class="sub" style="margin:2px 0"><b>How to do it</b></div>' +
+          '<div style="font-size:14px;margin:0 0 6px">' + esc(lib.cue) + '</div>'
           : '<div class="sub">Not in the library \u2014 your own exercise. Everything below still works.</div>') +
         '<div id="exdBody"></div>' +
         '</div>' +
@@ -7393,9 +7857,18 @@ const bkBox = document.getElementById('bkBox');
         // Show the muscle that MATCHED, not always the primary, so a bench press listed under
         // "shoulders" reads "shoulders" instead of looking misfiled.
         const shown = (libMuscle && e.primary.indexOf(libMuscle) === -1) ? libMuscle : e.primary.join(', ');
+        // UI audit, 2026-09-17: a 410-row text list next to an exercise library that now has 39
+        // real photos was the definition of a missed opportunity - the thumbnail costs nothing
+        // (same URL the detail card already loads) and turns a wall of text into something that
+        // looks like a real product for the rows that have one. No placeholder box for the rows
+        // that don't - an empty gap reads as more finished than a fake icon standing in.
+        const photo = EXERCISE_PHOTO[e.name];
+        const thumb = photo
+          ? '<img src="' + esc(photo.thumb) + '" alt="" loading="lazy" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex:0 0 auto;margin-right:10px" onerror="this.remove()">'
+          : '';
         return '<div class="row libRow" data-name="' + e.name.replace(/"/g, '&quot;') + '" style="cursor:pointer">' +
-          '<span>' + esc(e.name) + '</span>' +
-          '<span style="color:var(--text-dim);font-size:12px">' + esc(shown) + ' ›</span></div>';
+          '<span style="display:flex;align-items:center;min-width:0">' + thumb + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.name) + '</span></span>' +
+          '<span style="color:var(--text-dim);font-size:12px;flex:0 0 auto;margin-left:8px">' + esc(shown) + ' ›</span></div>';
       }
       libList.innerHTML =
         '<div class="sub">' + rows.length + ' of ' + EXERCISE_LIB.length + ' shown</div>' +
@@ -7525,6 +7998,45 @@ const bkBox = document.getElementById('bkBox');
       return scores;
     }
 
+    // Pulse checkpoint item 2 (2026-09-17): the body map's colour already shows STRENGTH per
+    // muscle (computeMuscleScores, above) but nothing shows RECOVERY - whether a muscle was
+    // just hammered and might still be sore. This reads the same `workouts` log for the most
+    // recent date each muscle appears in a real (non-warm-up) set. Pure arithmetic on data
+    // already stored - no new tracking, no wearable, matches the idea Whoop/Fitbod charge for.
+    function lastTrainedByMuscle() {
+      const last = {};
+      // Newest date first, so the FIRST time a muscle is seen below is its most recent session.
+      const sorted = workouts.slice().sort(function (a, b) {
+        return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+      });
+      sorted.forEach(function (w) {
+        (w.exercises || []).forEach(function (e) {
+          if (!workingSets(e.sets).length) return; // warm-up-only doesn't count as real training
+          musclesFor(e.name).forEach(function (m) {
+            if (!(m in last)) last[m] = w.date;
+          });
+        });
+      });
+      return last;
+    }
+
+    // Anything trained in the last 2 days gets called out by name - long enough to matter for
+    // next-session planning, short enough that the note doesn't just list every muscle you have.
+    function recoveryNoteHtml() {
+      const last = lastTrainedByMuscle();
+      const today = dayNumber(todayKey());
+      const recent = Object.keys(last)
+        .map(function (m) { return { muscle: m, days: today - dayNumber(last[m]) }; })
+        .filter(function (r) { return r.days <= 2; })
+        .sort(function (a, b) { return a.days - b.days; });
+      if (!recent.length) return '';
+      const label = function (m) { return m.charAt(0).toUpperCase() + m.slice(1); };
+      const when = function (d) { return d === 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago'; };
+      const parts = recent.map(function (r) { return label(r.muscle) + ' (' + when(r.days) + ')'; });
+      return '<div class="sub" style="margin-top:8px">Trained recently, may still be recovering: ' +
+        parts.join(', ') + '.</div>';
+    }
+
     function muscleFill(scores, muscle) {
       const score = scores[muscle];
       if (score == null) return 'fill:var(--border)';
@@ -7537,6 +8049,12 @@ const bkBox = document.getElementById('bkBox');
     // a four-point L trapezoid, the shoulder line a straight L run, the abs six literal
     // rounded <rect>s, the feet <ellipse>s, no hands, and every muscle a loose blob that
     // could overhang the body. Owen's words: "a bunch of shapes put together".
+    //
+    // v6, 2026-09-17: Owen on v5 - "the torso looks unnatural," specifically the abs and
+    // the overall taper. The abs came to a sharp point at the bottom (fixed - it now ends
+    // in a real flat base, not a vertex); the waist pinched in hard then flared straight
+    // back out to the hip within about 45px, which read as a wasp-waist cartoon (fixed -
+    // both the pinch and the flare are gentler, so the curve bends once instead of twice).
     //
     // This version is ONE continuous outline for the whole figure, drawn from anchor
     // points run through a centripetal Catmull-Rom conversion, so every joint is smooth
@@ -7551,7 +8069,7 @@ const bkBox = document.getElementById('bkBox');
     // The geometry is generated, not hand-written: the source of truth is
     // Projects/Calorie App/tests/bodymap-v3/build.py, and emit_js.py regenerates this
     // block. Edit the anchors there, not the path strings here.
-    const BODY_SILHOUETTE = 'M 100.00 22.00 C 97.00 22.00 93.69 22.28 91.00 23.00 C 88.69 23.62 86.66 24.42 85.00 26.00 C 83.16 27.76 81.56 30.40 80.50 33.00 C 79.39 35.73 78.91 38.90 78.50 42.00 C 78.07 45.23 77.52 48.62 78.00 52.00 C 78.52 55.62 80.09 59.65 81.50 63.00 C 82.76 65.99 84.85 68.36 86.00 71.00 C 87.02 73.36 87.84 75.48 88.00 78.00 C 88.18 80.81 87.51 84.10 87.00 87.00 C 86.51 89.77 86.21 92.75 85.00 95.00 C 83.88 97.08 82.04 98.59 80.00 100.00 C 77.71 101.59 74.86 102.73 72.00 104.00 C 68.86 105.40 65.35 106.53 62.00 108.00 C 58.52 109.53 54.91 111.17 51.50 113.00 C 48.08 114.83 44.85 116.88 41.50 119.00 C 38.02 121.21 33.46 122.94 31.00 126.00 C 28.63 128.94 27.81 133.11 27.00 137.00 C 26.14 141.11 25.76 145.60 26.00 150.00 C 26.26 154.60 28.25 159.32 28.50 164.00 C 28.75 168.65 27.33 173.51 27.50 178.00 C 27.66 182.18 28.72 186.18 29.50 190.00 C 30.22 193.51 31.29 196.82 32.00 200.00 C 32.63 202.82 33.81 205.20 33.50 208.00 C 33.14 211.20 30.73 214.45 30.00 218.00 C 29.23 221.78 28.92 226.00 29.00 230.00 C 29.08 234.00 29.82 238.10 30.50 242.00 C 31.16 245.77 33.26 249.55 33.00 253.00 C 32.76 256.22 29.77 258.59 29.00 262.00 C 28.11 265.92 27.75 270.68 28.00 275.00 C 28.25 279.35 29.20 284.28 30.50 288.00 C 31.53 290.95 33.22 293.88 35.00 295.00 C 36.39 295.88 38.87 295.41 40.00 294.00 C 41.54 292.08 42.31 288.37 43.00 285.00 C 43.81 281.04 44.03 276.59 44.50 272.00 C 45.03 266.92 45.62 260.76 46.00 256.00 C 46.29 252.43 46.34 250.17 46.50 247.00 C 46.67 243.50 46.67 239.74 47.00 236.00 C 47.34 232.08 47.92 227.99 48.50 224.00 C 49.08 219.99 49.95 215.67 50.50 212.00 C 50.95 209.01 51.42 206.84 51.50 204.00 C 51.59 200.84 51.17 197.33 51.00 194.00 C 50.83 190.67 50.26 187.49 50.50 184.00 C 50.76 180.15 51.87 175.75 52.50 172.00 C 53.04 168.75 53.42 165.99 54.00 163.00 C 54.58 159.99 55.10 156.70 56.00 154.00 C 56.77 151.70 57.76 149.43 59.00 148.00 C 59.93 146.93 61.45 146.05 62.50 146.50 C 63.78 147.05 65.14 149.20 66.00 151.00 C 66.97 153.03 68.40 155.74 68.00 158.00 C 67.57 160.41 64.63 162.41 63.50 165.00 C 62.30 167.74 61.42 170.97 61.00 174.00 C 60.59 176.97 60.48 180.22 61.00 183.00 C 61.48 185.56 62.84 187.52 64.00 190.00 C 65.34 192.85 67.15 195.97 68.50 199.00 C 69.82 201.97 71.73 205.15 72.00 208.00 C 72.23 210.48 70.85 212.52 70.00 215.00 C 69.02 217.85 67.79 220.93 66.50 224.00 C 65.12 227.27 63.50 230.67 62.00 234.00 C 60.50 237.33 58.60 240.61 57.50 244.00 C 56.44 247.27 56.39 250.61 55.50 254.00 C 54.55 257.61 52.76 260.87 52.00 265.00 C 51.10 269.87 50.67 275.66 50.50 281.00 C 50.33 286.33 50.58 291.68 51.00 297.00 C 51.42 302.34 52.06 307.86 53.00 313.00 C 53.89 317.86 55.48 322.40 56.50 327.00 C 57.48 331.40 58.38 335.90 59.00 340.00 C 59.54 343.57 59.74 346.83 60.00 350.00 C 60.24 352.83 60.58 355.25 60.50 358.00 C 60.41 360.92 60.28 363.88 59.50 367.00 C 58.61 370.55 56.23 374.11 55.50 378.00 C 54.73 382.11 54.75 386.76 55.00 391.00 C 55.25 395.10 56.09 399.03 57.00 403.00 C 57.92 407.03 59.33 411.00 60.50 415.00 C 61.67 419.00 62.87 423.17 64.00 427.00 C 65.03 430.50 66.20 433.81 67.00 437.00 C 67.70 439.81 68.68 442.54 68.50 445.00 C 68.34 447.20 67.06 449.05 66.00 451.00 C 64.89 453.05 63.08 454.85 62.00 457.00 C 60.91 459.18 59.17 461.84 59.50 464.00 C 59.83 466.17 62.09 468.51 64.00 470.00 C 65.92 471.51 68.62 472.49 71.00 473.00 C 73.28 473.49 75.82 473.35 78.00 473.00 C 79.99 472.68 82.20 472.30 83.50 471.00 C 84.87 469.63 85.77 467.29 86.00 465.00 C 86.27 462.29 85.50 458.99 85.00 456.00 C 84.50 452.99 83.67 450.00 83.00 447.00 C 82.33 444.00 81.34 441.02 81.00 438.00 C 80.67 435.02 80.69 432.24 81.00 429.00 C 81.36 425.24 82.27 421.08 83.00 417.00 C 83.77 412.75 84.75 408.34 85.50 404.00 C 86.25 399.67 87.17 395.35 87.50 391.00 C 87.83 386.68 87.67 382.16 87.50 378.00 C 87.34 374.16 86.85 370.50 86.50 367.00 C 86.18 363.83 85.67 361.00 85.50 358.00 C 85.33 355.00 85.50 352.00 85.50 349.00 C 85.50 346.00 85.36 343.73 85.50 340.00 C 85.70 334.73 86.10 328.25 86.50 322.00 C 86.93 315.25 87.49 307.92 88.00 301.00 C 88.49 294.25 88.87 287.16 89.50 281.00 C 90.03 275.83 90.78 271.33 91.50 267.00 C 92.11 263.33 92.58 259.94 93.50 257.00 C 94.25 254.61 95.28 252.50 96.50 251.00 C 97.45 249.84 98.83 249.00 100.00 249.00 C 101.17 249.00 102.55 249.84 103.50 251.00 C 104.72 252.50 105.75 254.61 106.50 257.00 C 107.42 259.94 107.89 263.33 108.50 267.00 C 109.22 271.33 109.97 275.83 110.50 281.00 C 111.13 287.16 111.51 294.25 112.00 301.00 C 112.51 307.92 113.07 315.25 113.50 322.00 C 113.90 328.25 114.30 334.73 114.50 340.00 C 114.64 343.73 114.50 346.00 114.50 349.00 C 114.50 352.00 114.67 355.00 114.50 358.00 C 114.33 361.00 113.82 363.83 113.50 367.00 C 113.15 370.50 112.66 374.16 112.50 378.00 C 112.33 382.16 112.17 386.68 112.50 391.00 C 112.83 395.35 113.75 399.67 114.50 404.00 C 115.25 408.34 116.23 412.75 117.00 417.00 C 117.73 421.08 118.64 425.24 119.00 429.00 C 119.31 432.24 119.33 435.02 119.00 438.00 C 118.66 441.02 117.67 444.00 117.00 447.00 C 116.33 450.00 115.50 452.99 115.00 456.00 C 114.50 458.99 113.73 462.29 114.00 465.00 C 114.23 467.29 115.13 469.63 116.50 471.00 C 117.80 472.30 120.01 472.68 122.00 473.00 C 124.18 473.35 126.72 473.49 129.00 473.00 C 131.38 472.49 134.08 471.51 136.00 470.00 C 137.91 468.51 140.17 466.17 140.50 464.00 C 140.83 461.84 139.09 459.18 138.00 457.00 C 136.92 454.85 135.11 453.05 134.00 451.00 C 132.94 449.05 131.66 447.20 131.50 445.00 C 131.32 442.54 132.30 439.81 133.00 437.00 C 133.80 433.81 134.97 430.50 136.00 427.00 C 137.13 423.17 138.33 419.00 139.50 415.00 C 140.67 411.00 142.08 407.03 143.00 403.00 C 143.91 399.03 144.75 395.10 145.00 391.00 C 145.25 386.76 145.27 382.11 144.50 378.00 C 143.77 374.11 141.39 370.55 140.50 367.00 C 139.72 363.88 139.59 360.92 139.50 358.00 C 139.42 355.25 139.76 352.83 140.00 350.00 C 140.26 346.83 140.46 343.57 141.00 340.00 C 141.62 335.90 142.52 331.40 143.50 327.00 C 144.52 322.40 146.11 317.86 147.00 313.00 C 147.94 307.86 148.58 302.34 149.00 297.00 C 149.42 291.68 149.67 286.33 149.50 281.00 C 149.33 275.66 148.90 269.87 148.00 265.00 C 147.24 260.87 145.45 257.61 144.50 254.00 C 143.61 250.61 143.56 247.27 142.50 244.00 C 141.40 240.61 139.50 237.33 138.00 234.00 C 136.50 230.67 134.88 227.27 133.50 224.00 C 132.21 220.93 130.98 217.85 130.00 215.00 C 129.15 212.52 127.77 210.48 128.00 208.00 C 128.27 205.15 130.18 201.97 131.50 199.00 C 132.85 195.97 134.66 192.85 136.00 190.00 C 137.16 187.52 138.52 185.56 139.00 183.00 C 139.52 180.22 139.41 176.97 139.00 174.00 C 138.58 170.97 137.70 167.74 136.50 165.00 C 135.37 162.41 132.43 160.41 132.00 158.00 C 131.60 155.74 133.03 153.03 134.00 151.00 C 134.86 149.20 136.22 147.05 137.50 146.50 C 138.55 146.05 140.07 146.93 141.00 148.00 C 142.24 149.43 143.23 151.70 144.00 154.00 C 144.90 156.70 145.42 159.99 146.00 163.00 C 146.58 165.99 146.96 168.75 147.50 172.00 C 148.13 175.75 149.24 180.15 149.50 184.00 C 149.74 187.49 149.17 190.67 149.00 194.00 C 148.83 197.33 148.41 200.84 148.50 204.00 C 148.58 206.84 149.05 209.01 149.50 212.00 C 150.05 215.67 150.92 219.99 151.50 224.00 C 152.08 227.99 152.66 232.08 153.00 236.00 C 153.33 239.74 153.33 243.50 153.50 247.00 C 153.66 250.17 153.71 252.43 154.00 256.00 C 154.38 260.76 154.97 266.92 155.50 272.00 C 155.97 276.59 156.19 281.04 157.00 285.00 C 157.69 288.37 158.46 292.08 160.00 294.00 C 161.13 295.41 163.61 295.88 165.00 295.00 C 166.78 293.88 168.47 290.95 169.50 288.00 C 170.80 284.28 171.75 279.35 172.00 275.00 C 172.25 270.68 171.89 265.92 171.00 262.00 C 170.23 258.59 167.24 256.22 167.00 253.00 C 166.74 249.55 168.84 245.77 169.50 242.00 C 170.18 238.10 170.92 234.00 171.00 230.00 C 171.08 226.00 170.77 221.78 170.00 218.00 C 169.27 214.45 166.86 211.20 166.50 208.00 C 166.19 205.20 167.37 202.82 168.00 200.00 C 168.71 196.82 169.78 193.51 170.50 190.00 C 171.28 186.18 172.34 182.18 172.50 178.00 C 172.67 173.51 171.25 168.65 171.50 164.00 C 171.75 159.32 173.74 154.60 174.00 150.00 C 174.24 145.60 173.86 141.11 173.00 137.00 C 172.19 133.11 171.37 128.94 169.00 126.00 C 166.54 122.94 161.98 121.21 158.50 119.00 C 155.15 116.88 151.92 114.83 148.50 113.00 C 145.09 111.17 141.48 109.53 138.00 108.00 C 134.65 106.53 131.14 105.40 128.00 104.00 C 125.14 102.73 122.29 101.59 120.00 100.00 C 117.96 98.59 116.12 97.08 115.00 95.00 C 113.79 92.75 113.49 89.77 113.00 87.00 C 112.49 84.10 111.82 80.81 112.00 78.00 C 112.16 75.48 112.98 73.36 114.00 71.00 C 115.15 68.36 117.24 65.99 118.50 63.00 C 119.91 59.65 121.48 55.62 122.00 52.00 C 122.48 48.62 121.93 45.23 121.50 42.00 C 121.09 38.90 120.61 35.73 119.50 33.00 C 118.44 30.40 116.84 27.76 115.00 26.00 C 113.34 24.42 111.31 23.62 109.00 23.00 C 106.31 22.28 103.00 22.00 100.00 22.00 Z';
+    const BODY_SILHOUETTE = 'M 100.00 22.00 C 97.00 22.00 93.69 22.28 91.00 23.00 C 88.69 23.62 86.66 24.42 85.00 26.00 C 83.16 27.76 81.56 30.40 80.50 33.00 C 79.39 35.73 78.91 38.90 78.50 42.00 C 78.07 45.23 77.52 48.62 78.00 52.00 C 78.52 55.62 80.09 59.65 81.50 63.00 C 82.76 65.99 84.85 68.36 86.00 71.00 C 87.02 73.36 87.84 75.48 88.00 78.00 C 88.18 80.81 87.51 84.10 87.00 87.00 C 86.51 89.77 86.21 92.75 85.00 95.00 C 83.88 97.08 82.04 98.59 80.00 100.00 C 77.71 101.59 74.86 102.73 72.00 104.00 C 68.86 105.40 65.35 106.53 62.00 108.00 C 58.52 109.53 54.91 111.17 51.50 113.00 C 48.08 114.83 44.85 116.88 41.50 119.00 C 38.02 121.21 33.46 122.94 31.00 126.00 C 28.63 128.94 27.81 133.11 27.00 137.00 C 26.14 141.11 25.76 145.60 26.00 150.00 C 26.26 154.60 28.25 159.32 28.50 164.00 C 28.75 168.65 27.33 173.51 27.50 178.00 C 27.66 182.18 28.72 186.18 29.50 190.00 C 30.22 193.51 31.29 196.82 32.00 200.00 C 32.63 202.82 33.81 205.20 33.50 208.00 C 33.14 211.20 30.73 214.45 30.00 218.00 C 29.23 221.78 28.92 226.00 29.00 230.00 C 29.08 234.00 29.82 238.10 30.50 242.00 C 31.16 245.77 33.26 249.55 33.00 253.00 C 32.76 256.22 29.77 258.59 29.00 262.00 C 28.11 265.92 27.75 270.68 28.00 275.00 C 28.25 279.35 29.20 284.28 30.50 288.00 C 31.53 290.95 33.22 293.88 35.00 295.00 C 36.39 295.88 38.87 295.41 40.00 294.00 C 41.54 292.08 42.31 288.37 43.00 285.00 C 43.81 281.04 44.03 276.59 44.50 272.00 C 45.03 266.92 45.62 260.76 46.00 256.00 C 46.29 252.43 46.34 250.17 46.50 247.00 C 46.67 243.50 46.67 239.74 47.00 236.00 C 47.34 232.08 47.92 227.99 48.50 224.00 C 49.08 219.99 49.95 215.67 50.50 212.00 C 50.95 209.01 51.42 206.84 51.50 204.00 C 51.59 200.84 51.17 197.33 51.00 194.00 C 50.83 190.67 50.26 187.49 50.50 184.00 C 50.76 180.15 51.87 175.75 52.50 172.00 C 53.04 168.75 53.42 165.99 54.00 163.00 C 54.58 159.99 55.10 156.70 56.00 154.00 C 56.77 151.70 57.76 149.43 59.00 148.00 C 59.93 146.93 61.45 146.05 62.50 146.50 C 63.78 147.05 65.14 149.20 66.00 151.00 C 66.97 153.03 68.40 155.74 68.00 158.00 C 67.57 160.41 64.40 162.39 63.50 165.00 C 62.56 167.72 62.67 171.00 62.50 174.00 C 62.33 177.00 62.16 180.10 62.50 183.00 C 62.83 185.77 63.77 188.25 64.50 191.00 C 65.27 193.92 66.14 197.09 67.00 200.00 C 67.81 202.76 69.25 205.22 69.50 208.00 C 69.75 210.89 69.00 214.01 68.50 217.00 C 68.00 220.01 67.33 223.02 66.50 226.00 C 65.66 229.02 64.48 231.91 63.50 235.00 C 62.48 238.24 61.55 241.85 60.50 245.00 C 59.55 247.85 58.76 250.03 57.50 253.00 C 55.93 256.69 53.11 260.56 52.00 265.00 C 50.78 269.90 50.67 275.66 50.50 281.00 C 50.33 286.33 50.58 291.68 51.00 297.00 C 51.42 302.34 52.06 307.86 53.00 313.00 C 53.89 317.86 55.48 322.40 56.50 327.00 C 57.48 331.40 58.38 335.90 59.00 340.00 C 59.54 343.57 59.74 346.83 60.00 350.00 C 60.24 352.83 60.58 355.25 60.50 358.00 C 60.41 360.92 60.28 363.88 59.50 367.00 C 58.61 370.55 56.23 374.11 55.50 378.00 C 54.73 382.11 54.75 386.76 55.00 391.00 C 55.25 395.10 56.09 399.03 57.00 403.00 C 57.92 407.03 59.33 411.00 60.50 415.00 C 61.67 419.00 62.87 423.17 64.00 427.00 C 65.03 430.50 66.20 433.81 67.00 437.00 C 67.70 439.81 68.68 442.54 68.50 445.00 C 68.34 447.20 67.06 449.05 66.00 451.00 C 64.89 453.05 63.08 454.85 62.00 457.00 C 60.91 459.18 59.17 461.84 59.50 464.00 C 59.83 466.17 62.09 468.51 64.00 470.00 C 65.92 471.51 68.62 472.49 71.00 473.00 C 73.28 473.49 75.82 473.35 78.00 473.00 C 79.99 472.68 82.20 472.30 83.50 471.00 C 84.87 469.63 85.77 467.29 86.00 465.00 C 86.27 462.29 85.50 458.99 85.00 456.00 C 84.50 452.99 83.67 450.00 83.00 447.00 C 82.33 444.00 81.34 441.02 81.00 438.00 C 80.67 435.02 80.69 432.24 81.00 429.00 C 81.36 425.24 82.27 421.08 83.00 417.00 C 83.77 412.75 84.75 408.34 85.50 404.00 C 86.25 399.67 87.17 395.35 87.50 391.00 C 87.83 386.68 87.67 382.16 87.50 378.00 C 87.34 374.16 86.85 370.50 86.50 367.00 C 86.18 363.83 85.67 361.00 85.50 358.00 C 85.33 355.00 85.50 352.00 85.50 349.00 C 85.50 346.00 85.36 343.73 85.50 340.00 C 85.70 334.73 86.10 328.25 86.50 322.00 C 86.93 315.25 87.49 307.92 88.00 301.00 C 88.49 294.25 88.87 287.16 89.50 281.00 C 90.03 275.83 90.78 271.33 91.50 267.00 C 92.11 263.33 92.58 259.94 93.50 257.00 C 94.25 254.61 95.28 252.50 96.50 251.00 C 97.45 249.84 98.83 249.00 100.00 249.00 C 101.17 249.00 102.55 249.84 103.50 251.00 C 104.72 252.50 105.75 254.61 106.50 257.00 C 107.42 259.94 107.89 263.33 108.50 267.00 C 109.22 271.33 109.97 275.83 110.50 281.00 C 111.13 287.16 111.51 294.25 112.00 301.00 C 112.51 307.92 113.07 315.25 113.50 322.00 C 113.90 328.25 114.30 334.73 114.50 340.00 C 114.64 343.73 114.50 346.00 114.50 349.00 C 114.50 352.00 114.67 355.00 114.50 358.00 C 114.33 361.00 113.82 363.83 113.50 367.00 C 113.15 370.50 112.66 374.16 112.50 378.00 C 112.33 382.16 112.17 386.68 112.50 391.00 C 112.83 395.35 113.75 399.67 114.50 404.00 C 115.25 408.34 116.23 412.75 117.00 417.00 C 117.73 421.08 118.64 425.24 119.00 429.00 C 119.31 432.24 119.33 435.02 119.00 438.00 C 118.66 441.02 117.67 444.00 117.00 447.00 C 116.33 450.00 115.50 452.99 115.00 456.00 C 114.50 458.99 113.73 462.29 114.00 465.00 C 114.23 467.29 115.13 469.63 116.50 471.00 C 117.80 472.30 120.01 472.68 122.00 473.00 C 124.18 473.35 126.72 473.49 129.00 473.00 C 131.38 472.49 134.08 471.51 136.00 470.00 C 137.91 468.51 140.17 466.17 140.50 464.00 C 140.83 461.84 139.09 459.18 138.00 457.00 C 136.92 454.85 135.11 453.05 134.00 451.00 C 132.94 449.05 131.66 447.20 131.50 445.00 C 131.32 442.54 132.30 439.81 133.00 437.00 C 133.80 433.81 134.97 430.50 136.00 427.00 C 137.13 423.17 138.33 419.00 139.50 415.00 C 140.67 411.00 142.08 407.03 143.00 403.00 C 143.91 399.03 144.75 395.10 145.00 391.00 C 145.25 386.76 145.27 382.11 144.50 378.00 C 143.77 374.11 141.39 370.55 140.50 367.00 C 139.72 363.88 139.59 360.92 139.50 358.00 C 139.42 355.25 139.76 352.83 140.00 350.00 C 140.26 346.83 140.46 343.57 141.00 340.00 C 141.62 335.90 142.52 331.40 143.50 327.00 C 144.52 322.40 146.11 317.86 147.00 313.00 C 147.94 307.86 148.58 302.34 149.00 297.00 C 149.42 291.68 149.67 286.33 149.50 281.00 C 149.33 275.66 149.22 269.90 148.00 265.00 C 146.89 260.56 144.07 256.69 142.50 253.00 C 141.24 250.03 140.45 247.85 139.50 245.00 C 138.45 241.85 137.52 238.24 136.50 235.00 C 135.52 231.91 134.34 229.02 133.50 226.00 C 132.67 223.02 132.00 220.01 131.50 217.00 C 131.00 214.01 130.25 210.89 130.50 208.00 C 130.75 205.22 132.19 202.76 133.00 200.00 C 133.86 197.09 134.73 193.92 135.50 191.00 C 136.23 188.25 137.17 185.77 137.50 183.00 C 137.84 180.10 137.67 177.00 137.50 174.00 C 137.33 171.00 137.44 167.72 136.50 165.00 C 135.60 162.39 132.43 160.41 132.00 158.00 C 131.60 155.74 133.03 153.03 134.00 151.00 C 134.86 149.20 136.22 147.05 137.50 146.50 C 138.55 146.05 140.07 146.93 141.00 148.00 C 142.24 149.43 143.23 151.70 144.00 154.00 C 144.90 156.70 145.42 159.99 146.00 163.00 C 146.58 165.99 146.96 168.75 147.50 172.00 C 148.13 175.75 149.24 180.15 149.50 184.00 C 149.74 187.49 149.17 190.67 149.00 194.00 C 148.83 197.33 148.41 200.84 148.50 204.00 C 148.58 206.84 149.05 209.01 149.50 212.00 C 150.05 215.67 150.92 219.99 151.50 224.00 C 152.08 227.99 152.66 232.08 153.00 236.00 C 153.33 239.74 153.33 243.50 153.50 247.00 C 153.66 250.17 153.71 252.43 154.00 256.00 C 154.38 260.76 154.97 266.92 155.50 272.00 C 155.97 276.59 156.19 281.04 157.00 285.00 C 157.69 288.37 158.46 292.08 160.00 294.00 C 161.13 295.41 163.61 295.88 165.00 295.00 C 166.78 293.88 168.47 290.95 169.50 288.00 C 170.80 284.28 171.75 279.35 172.00 275.00 C 172.25 270.68 171.89 265.92 171.00 262.00 C 170.23 258.59 167.24 256.22 167.00 253.00 C 166.74 249.55 168.84 245.77 169.50 242.00 C 170.18 238.10 170.92 234.00 171.00 230.00 C 171.08 226.00 170.77 221.78 170.00 218.00 C 169.27 214.45 166.86 211.20 166.50 208.00 C 166.19 205.20 167.37 202.82 168.00 200.00 C 168.71 196.82 169.78 193.51 170.50 190.00 C 171.28 186.18 172.34 182.18 172.50 178.00 C 172.67 173.51 171.25 168.65 171.50 164.00 C 171.75 159.32 173.74 154.60 174.00 150.00 C 174.24 145.60 173.86 141.11 173.00 137.00 C 172.19 133.11 171.37 128.94 169.00 126.00 C 166.54 122.94 161.98 121.21 158.50 119.00 C 155.15 116.88 151.92 114.83 148.50 113.00 C 145.09 111.17 141.48 109.53 138.00 108.00 C 134.65 106.53 131.14 105.40 128.00 104.00 C 125.14 102.73 122.29 101.59 120.00 100.00 C 117.96 98.59 116.12 97.08 115.00 95.00 C 113.79 92.75 113.49 89.77 113.00 87.00 C 112.49 84.10 111.82 80.81 112.00 78.00 C 112.16 75.48 112.98 73.36 114.00 71.00 C 115.15 68.36 117.24 65.99 118.50 63.00 C 119.91 59.65 121.48 55.62 122.00 52.00 C 122.48 48.62 121.93 45.23 121.50 42.00 C 121.09 38.90 120.61 35.73 119.50 33.00 C 118.44 30.40 116.84 27.76 115.00 26.00 C 113.34 24.42 111.31 23.62 109.00 23.00 C 106.31 22.28 103.00 22.00 100.00 22.00 Z';
     const BODY_VIEWBOX = '24 14 152 482';
 
     // Muscle shapes, already mirrored. Keys match the ten groups MUSCLE_RULES knows.
@@ -7563,8 +8081,8 @@ const bkBox = document.getElementById('bkBox');
         'M 99.00 124.00 C 97.23 120.90 91.70 121.34 88.00 121.00 C 84.36 120.67 80.25 120.80 77.00 122.00 C 73.91 123.14 71.02 125.20 69.00 128.00 C 66.69 131.20 64.46 135.41 64.00 140.00 C 63.46 145.41 64.13 152.55 66.00 158.00 C 67.79 163.22 70.90 169.27 75.00 172.00 C 78.90 174.60 85.77 175.06 90.00 174.00 C 93.77 173.06 97.62 170.42 99.00 166.00 C 100.95 159.75 100.00 149.50 100.00 142.00 C 100.00 135.50 101.23 127.90 99.00 124.00 Z',
         'M 101.00 124.00 C 102.77 120.90 108.30 121.34 112.00 121.00 C 115.64 120.67 119.75 120.80 123.00 122.00 C 126.09 123.14 128.98 125.20 131.00 128.00 C 133.31 131.20 135.54 135.41 136.00 140.00 C 136.54 145.41 135.87 152.55 134.00 158.00 C 132.21 163.22 129.10 169.27 125.00 172.00 C 121.10 174.60 114.23 175.06 110.00 174.00 C 106.23 173.06 102.38 170.42 101.00 166.00 C 99.05 159.75 100.00 149.50 100.00 142.00 C 100.00 135.50 98.77 127.90 101.00 124.00 Z'],
       abs: [
-        'M 99.00 176.00 C 97.62 172.74 91.35 175.81 89.00 178.00 C 86.35 180.47 84.95 185.58 84.00 190.00 C 82.95 194.91 82.84 200.51 83.00 206.00 C 83.17 211.84 83.81 218.22 85.00 224.00 C 86.14 229.56 87.77 235.55 90.00 240.00 C 91.77 243.55 95.46 248.93 97.00 248.00 C 98.79 246.93 99.59 239.99 100.00 234.00 C 100.59 225.33 100.17 213.83 100.00 204.00 C 99.84 194.50 101.29 181.41 99.00 176.00 Z',
-        'M 101.00 176.00 C 102.38 172.74 108.65 175.81 111.00 178.00 C 113.65 180.47 115.05 185.58 116.00 190.00 C 117.05 194.91 117.16 200.51 117.00 206.00 C 116.83 211.84 116.19 218.22 115.00 224.00 C 113.86 229.56 112.23 235.55 110.00 240.00 C 108.23 243.55 104.54 248.93 103.00 248.00 C 101.21 246.93 100.41 239.99 100.00 234.00 C 99.41 225.33 99.83 213.83 100.00 204.00 C 100.16 194.50 98.71 181.41 101.00 176.00 Z',
+        'M 99.00 176.00 C 97.62 172.74 91.23 175.48 89.00 178.00 C 86.23 181.14 84.84 187.93 84.00 193.00 C 83.18 197.93 83.45 203.46 84.00 208.00 C 84.45 211.79 85.57 215.14 87.00 218.00 C 88.24 220.47 90.15 222.89 92.00 224.00 C 93.48 224.89 95.76 224.93 97.00 224.00 C 98.43 222.93 99.59 220.73 100.00 218.00 C 100.59 214.06 100.14 209.80 100.00 204.00 C 99.80 195.80 101.29 181.41 99.00 176.00 Z',
+        'M 101.00 176.00 C 102.38 172.74 108.77 175.48 111.00 178.00 C 113.77 181.14 115.16 187.93 116.00 193.00 C 116.82 197.93 116.55 203.46 116.00 208.00 C 115.55 211.79 114.43 215.14 113.00 218.00 C 111.76 220.47 109.85 222.89 108.00 224.00 C 106.52 224.89 104.24 224.93 103.00 224.00 C 101.57 222.93 100.41 220.73 100.00 218.00 C 99.41 214.06 99.86 209.80 100.00 204.00 C 100.20 195.80 98.71 181.41 101.00 176.00 Z',
         'M 85.00 180.00 C 83.56 178.88 78.29 182.25 76.00 185.00 C 73.29 188.25 71.29 193.31 70.00 198.00 C 68.63 202.98 67.32 208.93 68.00 214.00 C 68.66 218.93 71.46 225.85 74.00 228.00 C 75.79 229.52 79.67 227.66 81.00 225.00 C 83.00 220.99 83.32 213.60 84.00 208.00 C 84.65 202.60 84.82 197.00 85.00 192.00 C 85.15 187.67 86.56 181.21 85.00 180.00 Z',
         'M 115.00 180.00 C 116.44 178.88 121.71 182.25 124.00 185.00 C 126.71 188.25 128.71 193.31 130.00 198.00 C 131.37 202.98 132.68 208.93 132.00 214.00 C 131.34 218.93 128.54 225.85 126.00 228.00 C 124.21 229.52 120.33 227.66 119.00 225.00 C 117.00 220.99 116.68 213.60 116.00 208.00 C 115.35 202.60 115.18 197.00 115.00 192.00 C 114.85 187.67 113.44 181.21 115.00 180.00 Z'],
       biceps: [
@@ -7784,6 +8302,7 @@ const bkBox = document.getElementById('bkBox');
       // thing at the map itself, which is where a confused user is actually looking.
       const muscleScores = computeMuscleScores(bw);
       document.getElementById('bodyMap').innerHTML = bodySvg(muscleScores) +
+        recoveryNoteHtml() +
         (Object.keys(muscleScores).length ? '' :
           '<div class="sub" style="margin-top:8px">None of the exercises you\'ve logged have a published strength standard yet, so nothing\'s colored in here. Log a compound lift (bench, squat, deadlift, overhead press) to see this fill in.</div>');
       const scores = [];
@@ -7902,6 +8421,32 @@ const bkBox = document.getElementById('bkBox');
       }
     }
 
+    // Pulse checkpoint item 5 (2026-09-17): the meal reminder used to fire at one fixed time
+    // every day, but Owen's real week isn't flat -- dinner has to happen before specific evening
+    // commitments on specific days (ISS Engine Testing Thu 6pm, ASME Product Dev Mon/Wed 7pm),
+    // and a reminder set for 6pm does no good on the one day dinner needs to be done BY 6pm.
+    // These are his known standing commitments, typed in here because the app has no calendar
+    // access -- not derived from anything, so if his schedule changes this list needs a hand
+    // edit too. getDay(): Sunday=0 ... Saturday=6.
+    const TIGHT_EVENING_WINDOWS = [
+      { day: 1, time: '19:00', label: 'ASME Product Dev' },
+      { day: 3, time: '19:00', label: 'ASME Product Dev' },
+      { day: 4, time: '18:00', label: 'ISS Engine Testing' }
+    ];
+    // Never moves the reminder LATER than what Owen picked, only earlier -- his own chosen time
+    // is always respected as the latest acceptable, this only tightens it on days that need it.
+    // 60 minutes of buffer before the commitment, same as the checkpoint conversation named.
+    function effectiveMealsReminderTime(date, chosen) {
+      const day = date.getDay();
+      const tight = TIGHT_EVENING_WINDOWS.find(function (w) { return w.day === day; });
+      if (!tight) return { time: chosen, reason: null };
+      const [h, m] = tight.time.split(':').map(Number);
+      const bufferMin = h * 60 + m - 60;
+      const earlier = String(Math.floor(bufferMin / 60)).padStart(2, '0') + ':' + String(bufferMin % 60).padStart(2, '0');
+      if (earlier < chosen) return { time: earlier, reason: tight.label + ' at ' + tight.time };
+      return { time: chosen, reason: null };
+    }
+
     // Checked once a minute, not every second like the workout clock above -- a reminder landing
     // within a minute of the time picked is plenty. Also run on load, on focus and whenever the
     // tab stops being hidden, so reopening the app after it was fully closed still catches an
@@ -7913,11 +8458,13 @@ const bkBox = document.getElementById('bkBox');
       const hhmm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
       const today = todayKey();
       if (reminderMealsOn()) {
-        const fireAt = localStorage.getItem('reminderMealsTime') || '18:00';
+        const chosen = localStorage.getItem('reminderMealsTime') || '18:00';
+        const effective = effectiveMealsReminderTime(now, chosen);
         const already = localStorage.getItem('reminderMealsFiredDate') === today;
         const loggedToday = (log[today] || []).length > 0;
-        if (!already && !loggedToday && hhmm >= fireAt) {
-          fireReminder('Reminder: nothing logged today yet', 'Log a meal', 'Nothing logged today yet.');
+        if (!already && !loggedToday && hhmm >= effective.time) {
+          const body = effective.reason ? 'Nothing logged today yet, and ' + effective.reason + ' is coming up.' : 'Nothing logged today yet.';
+          fireReminder('Reminder: nothing logged today yet', 'Log a meal', body);
           try { localStorage.setItem('reminderMealsFiredDate', today); } catch (e) { /* best effort */ }
         }
       }
